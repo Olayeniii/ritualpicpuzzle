@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ritual Puzzle Game</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20width%3D%2262%22%20height%3D%2262%22%20viewBox%3D%220%200%2062%2062%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id%3D%22glow%22%20x%3D%22-50%25%22%20y%3D%22-50%25%22%20width%3D%22200%25%22%20height%3D%22200%25%22%3E%3CfeGaussianBlur%20stdDeviation%3D%222.5%22%20result%3D%22coloredBlur%22/%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D%22coloredBlur%22/%3E%3CfeMergeNode%20in%3D%22SourceGraphic%22/%3E%3C/feMerge%3E%3C/filter%3E%3C/defs%3E%3Cg%20filter%3D%22url%28%23glow%29%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M21.5294%2028.5991L23.5293%2030.612L30.4705%2023.6257L28.4706%2021.6127L21.5294%2028.5991Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M9%2031.1449L16%2038.1905L20.4706%2033.6908L18.4706%2031.6777L16%2034.1644L13%2031.1449L16%2028.1254L23.4706%2035.6446L25.4705%2033.6316L15.9999%2024.0994L9%2031.1449Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M28.5294%2026.6453L26.5294%2028.6582L33.4706%2035.6446L35.4706%2033.6316L28.5294%2026.6453Z%22%20fill%3D%22%2300FFFF%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M40.4706%2033.6908L38.4705%2031.6778L31.5294%2038.6641L33.5294%2040.6772L40.4706%2033.6908Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M19%2021.0798L23.4706%2025.5795L25.4706%2023.5665L23%2021.0799L26%2018.0603L33.4706%2025.5795L35.4706%2023.5665L26%2014.0343L19%2021.0798Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M26.5294%2038.7234L36%2048.2556L43%2041.21L38.5294%2036.7104L36.5293%2038.7235L38.9999%2041.2102L35.9999%2044.2297L28.5293%2036.7105L26.5294%2038.7234Z%22%20fill%3D%22%2300FFFF%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M36.5294%2028.6583L46%2038.1905L53%2031.1449L46%2024.0994L41.5294%2028.5991L43.5294%2030.6121L46%2028.1255L49%2031.145L46%2034.1645L38.5294%2026.6453L36.5294%2028.6583Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M19%2041.21L26%2048.2556L30.4706%2043.7559L28.4706%2041.7428L26%2044.2295L23%2041.21L30.4706%2033.6908L28.4705%2031.6777L19%2041.21Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M31.5303%2018.5331L33.5302%2020.5461L36.0008%2018.0594L39.0008%2021.079L31.5302%2028.5982L33.5302%2030.6112L43.0008%2021.0789L36.0008%2014.0334L31.5303%2018.5331Z%22%20fill%3D%22%23D100D1%22/%3E%3Cpath%20d%3D%22M27.4119%2012.6511L31.0393%209L34.6668%2012.6511L31.0393%2016.3022L27.4119%2012.6511Z%22%20fill%3D%22%2300FFFF%22/%3E%3Cpath%20d%3D%22M27.4119%2049.3489L31.0394%2045.6978L34.6668%2049.3489L31.0394%2053L27.4119%2049.3489Z%22%20fill%3D%22%2300FFFF%22/%3E%3C/g%3E%3C/svg%3E" />
+  <style>
+    body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(ellipse at bottom, #0a0a1f 0%, #060012 100%);
+  color: #e0e0ff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+#puzzle {
+  width: 300px;
+  height: 300px;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  gap: 2px;
+  margin-bottom: 10px;
+  border: 2px solid #ff2f92;
+  box-shadow: 0 0 20px #ff2f92, 0 0 12px #2f00ff inset;
+  background: #100018;
+}
+
+.tile {
+  width: 100px;
+  height: 100px;
+  background-size: 300px 300px;
+  cursor: pointer;
+  border-radius: 8px;
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.3s;
+}
+
+.tile:hover {
+  box-shadow: 0 0 12px #ff69b4, 0 0 8px #8a2be2;
+  transform: scale(1.02);
+}
+
+button {
+  margin: 6px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #7f00ff, #e100ff);
+  color: #fff;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 0 10px #c800ff;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+button:hover {
+  background: linear-gradient(135deg, #9900ff, #ff00cc);
+  box-shadow: 0 0 15px #ff00cc;
+}
+
+#logo {
+  max-width: 120px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 8px #ff00cc);
+}
+
+h1 {
+  color: #ff2f92;
+  text-shadow: 0 0 12px #7f00ff, 0 0 8px #e100ff;
+  letter-spacing: 1px;
+}
+
+#status {
+  font-weight: bold;
+  font-size: 1.3em;
+  color: #00ffd0;
+  margin: 10px 0;
+  text-shadow: 0 0 6px #00ffcc;
+}
+
+#moves, #timer {
+  font-weight: bold;
+  color: #ffe45e;
+  text-shadow: 0 0 6px #ffd700;
+}
+  </style>
+</head>
+<body>
+  <div id="logo">
+    <svg width="62" height="62" viewBox="0 0 62 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M21.5294 28.5991L23.5293 30.612L30.4705 23.6257L28.4706 21.6127L21.5294 28.5991Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M9 31.1449L16 38.1905L20.4706 33.6908L18.4706 31.6777L16 34.1644L13 31.1449L16 28.1254L23.4706 35.6446L25.4705 33.6316L15.9999 24.0994L9 31.1449Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M28.5294 26.6453L26.5294 28.6582L33.4706 35.6446L35.4706 33.6316L28.5294 26.6453Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M40.4706 33.6908L38.4705 31.6778L31.5294 38.6641L33.5294 40.6772L40.4706 33.6908Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M19 21.0798L23.4706 25.5795L25.4706 23.5665L23 21.0799L26 18.0603L33.4706 25.5795L35.4706 23.5665L26 14.0343L19 21.0798Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M26.5294 38.7234L36 48.2556L43 41.21L38.5294 36.7104L36.5293 38.7235L38.9999 41.2102L35.9999 44.2297L28.5293 36.7105L26.5294 38.7234Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M36.5294 28.6583L46 38.1905L53 31.1449L46 24.0994L41.5294 28.5991L43.5294 30.6121L46 28.1255L49 31.145L46 34.1645L38.5294 26.6453L36.5294 28.6583Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M19 41.21L26 48.2556L30.4706 43.7559L28.4706 41.7428L26 44.2295L23 41.21L30.4706 33.6908L28.4705 31.6777L19 41.21Z" fill="black"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M31.5303 18.5331L33.5302 20.5461L36.0008 18.0594L39.0008 21.079L31.5302 28.5982L33.5302 30.6112L43.0008 21.0789L36.0008 14.0334L31.5303 18.5331Z" fill="black"/>
+      <path d="M27.4119 12.6511L31.0393 9L34.6668 12.6511L31.0393 16.3022L27.4119 12.6511Z" fill="black"/>
+      <path d="M27.4119 49.3489L31.0394 45.6978L34.6668 49.3489L31.0394 53L27.4119 49.3489Z" fill="black"/>
+    </svg>
+  </div>
+  <h1>Ritual Puzzle Game</h1>
+  <div id="puzzle"></div>
+  <div>
+    <button onclick="shuffleAndDraw()">Shuffle</button>
+    <button onclick="resetTiles()">Reset</button>
+    <button onclick="showInstructions()">Instructions</button>
+  </div>
+  <p id="status"></p>
+  <p>Moves: <span id="moves">0</span></p>
+  <p>Time: <span id="timer">0</span> seconds</p>
+  <audio id="move-sound" src="https://www.soundjay.com/button/sounds/button-29.mp3" preload="auto"></audio>
+  <script>
+    const imgUrl = "ritual.jpg";
+    const puzzle = document.getElementById("puzzle");
+    const status = document.getElementById("status");
+    const moveSound = document.getElementById("move-sound");
+    const moveCounter = document.getElementById("moves");
+    const timerDisplay = document.getElementById("timer");
+
+    let originalTiles = Array.from({ length: 9 }, (_, i) => i);
+    let tiles = [...originalTiles];
+    let moves = 0;
+    let timer = 0;
+    let timerInterval;
+
+    function draw() {
+      puzzle.innerHTML = "";
+      tiles.forEach((tile, i) => {
+        const el = document.createElement("div");
+        if (tile === 8) {
+          el.className = "tile";
+          el.style.background = "transparent";
+        } else {
+          el.className = "tile";
+          el.style.backgroundImage = `url(${imgUrl})`;
+          el.style.backgroundPosition = `-${(tile % 3) * 100}px -${Math.floor(tile / 3) * 100}px`;
+          el.addEventListener("click", () => tryMove(i));
+        }
+        puzzle.appendChild(el);
+      });
+    }
+
+    function tryMove(index) {
+      const emptyIndex = tiles.indexOf(8);
+      if (isValidMove(index, emptyIndex)) {
+        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+        moveSound.play();
+        moves++;
+        moveCounter.textContent = moves;
+        draw();
+        checkWin();
+      }
+    }
+
+    function isValidMove(from, to) {
+      const dx = Math.abs((from % 3) - (to % 3));
+      const dy = Math.abs(Math.floor(from / 3) - Math.floor(to / 3));
+      return dx + dy === 1;
+    }
+
+    function checkWin() {
+      if (tiles.slice(0, 8).every((t, i) => t === i)) {
+        status.textContent = "🎉 You solved it!";
+        clearInterval(timerInterval);
+        showConfetti();
+      } else {
+        status.textContent = "";
+      }
+    }
+
+    function showConfetti() {
+      const confetti = document.createElement("div");
+      confetti.textContent = "✨";
+      confetti.style.position = "fixed";
+      confetti.style.top = "50%";
+      confetti.style.left = "50%";
+      confetti.style.transform = "translate(-50%, -50%)";
+      confetti.style.fontSize = "5rem";
+      confetti.style.animation = "fade 2s forwards";
+      document.body.appendChild(confetti);
+      setTimeout(() => confetti.remove(), 2000);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function shuffleAndDraw() {
+      shuffle(tiles);
+      draw();
+      status.textContent = "";
+      moves = 0;
+      moveCounter.textContent = moves;
+      timer = 0;
+      timerDisplay.textContent = timer;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timer++;
+        timerDisplay.textContent = timer;
+      }, 1000);
+    }
+
+    function resetTiles() {
+      tiles = [...originalTiles];
+      draw();
+      moves = 0;
+      moveCounter.textContent = moves;
+      timer = 0;
+      timerDisplay.textContent = timer;
+      clearInterval(timerInterval);
+    }
+
+    function showInstructions() {
+      alert("Click a tile next to the blank to slide it into place. Arrange them in the correct order to win.");
+    }
+
+    shuffleAndDraw();
+  </script>
+</body>
+</html>
