@@ -1,70 +1,132 @@
-# Getting Started with Create React App
+# 🧩 Ritual Puzzle
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A challenging sliding picture puzzle game built for the Ritual Community. Test your problem-solving skills and compete with others on the leaderboard!
 
-## Available Scripts
+## 🎮 Game Features
 
-In the project directory, you can run:
+### Core Gameplay
+- **4x4 Sliding Puzzle** - Classic sliding tile puzzle mechanics
+- **Custom Ritual Image** - Beautiful themed puzzle image
+- **Move Counter** - Track your efficiency with move counting
+- **Timer** - Race against time with built-in stopwatch
+- **Move Limit Challenge** - Warning system when approaching 100 moves
 
-### `npm start`
+### Progress Tracking
+- **Real-time Progress Bar** - Visual completion percentage
+- **Achievement System** - Unlock badges for exceptional performance:
+  - 🎉 **First Move** - Make your first move
+  - 🎯 **Efficient Mover** - Solve in ≤50 moves
+  - 👑 **Minimal Moves** - Solve in ≤25 moves
+  - ⚡ **Fast Solver** - Solve in ≤60 seconds
+  - 🚀 **Speed Demon** - Solve in ≤30 seconds
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Competitive Features
+- **Global Leaderboard** - Compete with other players
+- **Score Submission** - Automatically saves your best times
+- **Ranking System** - Gold, Silver, Bronze highlighting
+- **Community Competition** - Built for the Ritual Community
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 🎨 Design Features
 
-### `npm test`
+### Modern UI
+- **Dark Theme** - Easy on the eyes with purple accent colors
+- **Responsive Design** - Works perfectly on desktop, tablet, and mobile
+- **Glassmorphism Effects** - Modern status bar with backdrop blur
+- **Smooth Animations** - Progress bars and achievement notifications
+- **Custom Ritual Logo** - Branded favicon and interface elements
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Mobile Optimized
+- **Touch-friendly** - Optimized for mobile gameplay
+- **Responsive Layout** - Adapts to all screen sizes
+- **Mobile Gestures** - Natural touch interactions
 
-### `npm run build`
+## 🚀 Getting Started
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Prerequisites
+- Node.js (v14 or higher)
+- npm or yarn package manager
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd ritualpicpuzzle
+   ```
 
-### `npm run eject`
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Production Build
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm run build
+```
 
-## Learn More
+Builds the app for production to the `build` folder.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## 🏗️ Technology Stack
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- **Frontend**: React.js
+- **Styling**: CSS3 with modern features (gradients, backdrop-filter, animations)
+- **Icons**: Custom SVG Ritual Logo
+- **Responsive**: Mobile-first design approach
+- **Backend**: Node.js/Express (for leaderboard API)
 
-### Code Splitting
+## 🎯 Game Rules
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+1. **Objective**: Arrange the scrambled tiles to form the complete picture
+2. **Movement**: Click/tap tiles adjacent to the empty space to move them
+3. **Goal**: Solve the puzzle in the fewest moves and fastest time
+4. **Challenge**: Try to beat the 100-move limit and achieve sub-60 second times
 
-### Analyzing the Bundle Size
+## 🏆 Achievements Guide
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- **First Move**: Simply make your first move to get started
+- **Efficient Mover**: Focus on planning your moves to stay under 50
+- **Minimal Moves**: Master puzzle-solving techniques for under 25 moves
+- **Fast Solver**: Speed is key - solve within 60 seconds
+- **Speed Demon**: The ultimate challenge - solve in 30 seconds or less
 
-### Making a Progressive Web App
+## 📱 Mobile Experience
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+The game is fully optimized for mobile devices with:
+- Touch-friendly tile interactions
+- Responsive status bar that stacks on mobile
+- Optimized font sizes and spacing
+- Mobile-specific achievement notifications
 
-### Advanced Configuration
+## 🎨 Customization
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+The game uses CSS custom properties and can be easily themed:
+- Primary color: `#8a2be2` (Purple)
+- Accent colors: Achievement-specific gradients
+- Dark theme with `#0a0a0a` background
 
-### Deployment
+## 🤝 Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Built for the Ritual Community! Feel free to submit issues and enhancement requests.
 
-### `npm run build` fails to minify
+## 📄 License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+© 2025 Ritual Puzzle. Made with ❤️ for the Ritual Community.
+
+## 🔗 Links
+
+- **Play the Game**: [Insert deployment URL]
+- **Report Issues**: [Insert issues URL]
+- **Ritual Community**: [Insert community link]
+
+---
+
+**Challenge yourself and climb the leaderboard! 🚀**
