@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
@@ -29,9 +29,14 @@ function App() {
   const [adminKey, setAdminKey] = useState("");
   const [logoLongPressTimer, setLogoLongPressTimer] = useState(null);
 
-  // Use ref to track current leaderboard type to avoid dependency issues
+  // Use refs to track current values to avoid dependency issues
   const leaderboardTypeRef = useRef(leaderboardType);
+  const tournamentStatusRef = useRef(tournamentStatus);
+  const countdownRef = useRef(countdown);
+  
   leaderboardTypeRef.current = leaderboardType;
+  tournamentStatusRef.current = tournamentStatus;
+  countdownRef.current = countdown;
   
   // fetch leaderboard - stable function
   const fetchLeaderboard = useCallback(async () => {
@@ -81,52 +86,42 @@ const fetchTournamentStatus = useCallback(async () => {
     fetchTournamentStatus();
   }, [fetchLeaderboard, fetchTournamentStatus]); // Include dependencies
   
-  // Smart tournament checking - only check when needed
+  // Smart tournament checking - minimal polling approach
   useEffect(() => {
-    // Function to calculate if we should be checking
-    const shouldCheck = () => {
-      const now = new Date();
-      const currentDay = now.getDay(); // 0 = Sunday, 3 = Wednesday
-      const currentHour = now.getHours();
-      
-      // If tournament is active, countdown, or break - check frequently
-      if (tournamentStatus && ['active', 'countdown', 'break'].includes(tournamentStatus.status)) {
-        return { check: true, frequency: 30000 }; // Every 30 seconds during tournament
-      }
-      
-      // Only check on Wednesday or near Wednesday tournament time
-      if (currentDay === 3) { // Wednesday
-        // Check more frequently on tournament day (especially near 2-4pm UTC)
-        if (currentHour >= 13 && currentHour <= 16) { // 1pm-4pm UTC (covers UTC+1 3pm)
-          return { check: true, frequency: 60000 }; // Every minute on tournament day
-        }
-        return { check: true, frequency: 300000 }; // Every 5 minutes on Wednesday
-      }
-      
-      // Tuesday evening - countdown starts at 11pm Lagos time (10pm UTC)
-      if (currentDay === 2 && currentHour >= 22) { // Tuesday after 10pm UTC (11pm Lagos)
-        return { check: true, frequency: 60000 }; // Every minute during countdown
-      } else if (currentDay === 2 && currentHour >= 20) { // Tuesday after 8pm UTC
-        return { check: true, frequency: 300000 }; // Every 5 minutes before countdown
-      }
-      
-      // All other times - no need to check
-      return { check: false, frequency: 0 };
-    };
+    let statusInterval;
     
-    const { check, frequency } = shouldCheck();
-    
-    if (!check) {
-      // No tournament checking needed right now
-      return;
+    // Only start polling for active tournaments and breaks
+    if (tournamentStatus && ['active', 'break'].includes(tournamentStatus.status)) {
+      statusInterval = setInterval(() => {
+        fetchTournamentStatus();
+      }, 120000); // Every 2 minutes during active tournament
     }
     
-    const statusInterval = setInterval(() => {
-      fetchTournamentStatus();
-    }, frequency);
-    
-    return () => clearInterval(statusInterval);
+    return () => {
+      if (statusInterval) clearInterval(statusInterval);
+    };
   }, [tournamentStatus, fetchTournamentStatus]);
+  
+  // Memoize countdown minutes to avoid excessive re-renders
+  const countdownMinutes = useMemo(() => {
+    return countdown > 0 ? Math.floor(countdown / 60) : 0;
+  }, [countdown]);
+  
+  // Separate effect for countdown final minutes checking
+  useEffect(() => {
+    let countdownPolling;
+    
+    // Only check final 5 minutes of countdown
+    if (tournamentStatus?.status === 'countdown' && countdownMinutes > 0 && countdownMinutes <= 5) {
+      countdownPolling = setInterval(() => {
+        fetchTournamentStatus();
+      }, 60000); // Every minute in final 5 minutes
+    }
+    
+    return () => {
+      if (countdownPolling) clearInterval(countdownPolling);
+    };
+  }, [tournamentStatus?.status, countdownMinutes, fetchTournamentStatus]); // Remove countdown dependency, use countdownMinutes only
   
   // Fetch leaderboard when type changes
   useEffect(() => {
@@ -150,7 +145,7 @@ const fetchTournamentStatus = useCallback(async () => {
         setCountdown(Math.ceil(timeLeft / 1000));
       } else {
         setCountdown(null);
-        fetchTournamentStatus(); // Refresh status
+        // Status will be updated by the smart checking logic
       }
     };
     
@@ -160,7 +155,7 @@ const fetchTournamentStatus = useCallback(async () => {
     const isActiveCountdown = tournamentStatus.status === 'countdown' || 
                              (tournamentStatus.status === 'scheduled' && countdown > 0);
     
-    const countdownInterval = setInterval(updateCountdown, isActiveCountdown ? 1000 : 5000);
+    const countdownInterval = setInterval(updateCountdown, isActiveCountdown ? 10000 : 60000);
     
     return () => clearInterval(countdownInterval);
   }, [tournamentStatus, countdown, fetchTournamentStatus]);
@@ -310,7 +305,12 @@ const handleAdminLogin = async () => {
 // Logo long press handler
 const handleLogoMouseDown = () => {
   const timer = setTimeout(() => {
-    setShowAdminKey(true);
+    // If admin is already authenticated, open panel directly
+    if (adminAuth) {
+      setShowAdminPanel(true);
+    } else {
+      setShowAdminKey(true);
+    }
   }, 3000); // 3 second long press
   setLogoLongPressTimer(timer);
 };
@@ -327,13 +327,18 @@ useEffect(() => {
   const handleKeyDown = (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'A') {
       e.preventDefault();
-      setShowAdminKey(true);
+      // If admin is already authenticated, open panel directly
+      if (adminAuth) {
+        setShowAdminPanel(true);
+      } else {
+        setShowAdminKey(true);
+      }
     }
   };
   
   window.addEventListener('keydown', handleKeyDown);
   return () => window.removeEventListener('keydown', handleKeyDown);
-}, []);
+}, [adminAuth]);
 
   const startGame = () => {
     const initialTiles = Array.from(
@@ -504,6 +509,7 @@ useEffect(() => {
                 onChange={(e) => setAdminKey(e.target.value)}
                 className="admin-key-input"
                 autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
               />
               <div className="admin-actions">
                 <button onClick={handleAdminLogin} className="admin-login-btn">
@@ -516,6 +522,9 @@ useEffect(() => {
                   Cancel
                 </button>
               </div>
+              <small style={{ color: '#999', display: 'block', marginTop: '10px', textAlign: 'center' }}>
+                💡 Once logged in, use the same triggers to reopen the panel
+              </small>
             </div>
           )}
           
