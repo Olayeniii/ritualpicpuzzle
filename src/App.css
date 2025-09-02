@@ -429,11 +429,29 @@ html {
   overflow-x: auto;
 }
 
-.leaderboard h2 {
-  text-align: center;
+.leaderboard-header {
   margin-bottom: 15px;
-  color: #c0c0ff;
+  text-align: center;
 }
+
+.leaderboard h2 {
+  margin: 0 0 10px 0;
+  color: #c0c0ff;
+  font-size: 1.2rem;
+}
+
+.round-indicator {
+  background: linear-gradient(135deg, #8a2be2, #9a3bef);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(138, 43, 226, 0.3);
+}
+
+
 
 .leaderboard table {
   width: 100%;
@@ -516,4 +534,440 @@ html {
 .footer-links span:hover {
   opacity: 1;
   color: #8a2be2;
+}
+
+/* Hidden Admin Trigger */
+.admin-trigger {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.admin-trigger:hover {
+  opacity: 0.8;
+}
+
+/* Admin Key Section */
+.admin-key-section {
+  background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+  border: 2px solid #8a2be2;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-key-input {
+  width: 100%;
+  background: #222;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  margin-bottom: 15px;
+  transition: border-color 0.2s;
+}
+
+.admin-key-input:focus {
+  outline: none;
+  border-color: #8a2be2;
+  box-shadow: 0 0 5px rgba(138, 43, 226, 0.3);
+}
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.admin-login-btn {
+  background: #8a2be2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: bold;
+}
+
+.admin-login-btn:hover {
+  background: #9a3bef;
+}
+
+.cancel-admin-btn {
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-admin-btn:hover {
+  background: #555;
+  color: white;
+}
+
+/* Tournament Banner */
+.tournament-banner {
+  background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+  border: 2px solid #333;
+  border-radius: 8px;
+  margin: 20px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tournament-banner.scheduled {
+  border-color: #4a4a4a;
+}
+
+.tournament-banner.countdown {
+  border-color: #ff6b35;
+  background: linear-gradient(135deg, #2a1a1a, #3a2a1a);
+  animation: pulse 2s infinite;
+}
+
+.tournament-banner.active {
+  border-color: #00ff88;
+  background: linear-gradient(135deg, #1a2a1a, #1a3a2a);
+  animation: glow 3s infinite alternate;
+}
+
+.tournament-banner.break {
+  border-color: #ffaa00;
+  background: linear-gradient(135deg, #2a2a1a, #3a3a1a);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3); }
+  100% { box-shadow: 0 4px 25px rgba(0, 255, 136, 0.6); }
+}
+
+.tournament-info h3 {
+  margin: 0 0 10px 0;
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.tournament-info p {
+  margin: 5px 0;
+  color: #e0e0e0;
+  font-size: 1.1rem;
+}
+
+.tournament-info small {
+  color: #c0c0c0;
+  font-size: 0.9rem;
+}
+
+.tournament-info.countdown-active p strong {
+  color: #ff6b35;
+  font-size: 1.3rem;
+}
+
+.tournament-info.active p {
+  color: #00ff88;
+  font-weight: bold;
+}
+
+/* Admin Panel */
+.admin-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.admin-content {
+  background: #111;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: #e0e0e0;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 10px;
+}
+
+.admin-header h2 {
+  margin: 0;
+  color: #c0c0ff;
+}
+
+.admin-header button {
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+/* Admin Login */
+.admin-login {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  color: #c0c0ff;
+  font-weight: bold;
+}
+
+.form-group input {
+  background: #222;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 1rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #8a2be2;
+}
+
+.admin-login button {
+  background: #8a2be2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.admin-login button:hover {
+  background: #9a3bef;
+}
+
+/* Admin Dashboard */
+.admin-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-info {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.admin-info p {
+  margin: 0 0 5px 0;
+}
+
+.status {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.status.scheduled { background: #444; color: #ccc; }
+.status.countdown { background: #ff6b35; color: white; }
+.status.active { background: #00ff88; color: black; }
+.status.break { background: #ffaa00; color: black; }
+.status.completed { background: #666; color: #ccc; }
+
+.admin-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.control-group h3 {
+  margin: 0 0 15px 0;
+  color: #c0c0ff;
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+}
+
+.control-group button {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 5px 5px 5px 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.control-group button:hover:not(:disabled) {
+  background: #8a2be2;
+  border-color: #8a2be2;
+  color: white;
+}
+
+.control-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tournament-details {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.tournament-details h3 {
+  margin: 0 0 10px 0;
+  color: #c0c0ff;
+}
+
+.tournament-details p {
+  margin: 5px 0;
+  color: #e0e0e0;
+}
+
+/* Admin Manual Controls */
+.manual-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.manual-controls label {
+  color: #c0c0ff;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.admin-select {
+  background: #222;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.admin-select:focus {
+  outline: none;
+  border-color: #8a2be2;
+}
+
+.admin-toggle {
+  background: #333;
+  color: #8a2be2;
+  border: 1px solid #8a2be2;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-toggle:hover {
+  background: #8a2be2;
+  color: white;
+}
+
+.admin-toggle.active {
+  background: #8a2be2;
+  color: white;
+  font-weight: bold;
+}
+
+.round-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.round-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.round-btn {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 35px;
+}
+
+.round-btn:hover:not(.active) {
+  background: #555;
+}
+
+.round-btn.active {
+  background: #8a2be2;
+  border-color: #8a2be2;
+  color: white;
+  font-weight: bold;
 }

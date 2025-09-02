@@ -7,13 +7,33 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
+    const { type = "all" } = req.query; // "all", "weekly"
+    
     try {
-      const result = await pool.query(
-        `SELECT username, moves, time, created_at
-         FROM leaderboard
-         ORDER BY moves ASC, time ASC
-         LIMIT 10`
-      );
+      let query;
+      let params = [];
+      
+      if (type === "weekly") {
+        query = `
+          SELECT username, moves, time, created_at
+          FROM leaderboard
+          WHERE timeout = false
+          AND created_at >= date_trunc('week', now())
+          AND created_at < date_trunc('week', now()) + interval '7 days'
+          ORDER BY moves ASC, time ASC
+          LIMIT 10
+        `;
+      } else {
+        query = `
+          SELECT username, moves, time, created_at
+          FROM leaderboard
+          WHERE timeout = false
+          ORDER BY moves ASC, time ASC
+          LIMIT 10
+        `;
+      }
+      
+      const result = await pool.query(query, params);
       res.status(200).json(result.rows);
     } catch (err) {
       console.error(err);
