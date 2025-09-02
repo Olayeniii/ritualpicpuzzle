@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
@@ -29,31 +29,36 @@ function App() {
   const [adminKey, setAdminKey] = useState("");
   const [logoLongPressTimer, setLogoLongPressTimer] = useState(null);
 
-  // fetch leaderboard
-const fetchLeaderboard = useCallback(async () => {
-  try {
-    let url = "/api/leaderboard";
-    
-    if (leaderboardType === "weekly") {
-      url += "?type=weekly";
-    } else if (leaderboardType === "tournament") {
-      url = `/api/tournament?round=1&mode=combined`;
+  // Use ref to track current leaderboard type to avoid dependency issues
+  const leaderboardTypeRef = useRef(leaderboardType);
+  leaderboardTypeRef.current = leaderboardType;
+  
+  // fetch leaderboard - stable function
+  const fetchLeaderboard = useCallback(async () => {
+    const currentType = leaderboardTypeRef.current;
+    try {
+      let url = "/api/leaderboard";
+      
+      if (currentType === "weekly") {
+        url += "?type=weekly";
+      } else if (currentType === "tournament") {
+        url = `/api/tournament?round=1&mode=combined`;
+      }
+      
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error("Leaderboard API error:", res.status, res.statusText);
+        return; // Don't update state on error
+      }
+      const data = await res.json();
+      setLeaderboard(data);
+    } catch (err) {
+      console.error("Failed to fetch leaderboard:", err);
+      // Keep existing leaderboard on error to prevent UI flashing
     }
-    
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error("Leaderboard API error:", res.status, res.statusText);
-      return; // Don't update state on error
-    }
-    const data = await res.json();
-    setLeaderboard(data);
-  } catch (err) {
-    console.error("Failed to fetch leaderboard:", err);
-    // Keep existing leaderboard on error to prevent UI flashing
-  }
-}, [leaderboardType]);
+  }, []); // No dependencies - truly stable
 
-// fetch tournament status
+// fetch tournament status - stable function
 const fetchTournamentStatus = useCallback(async () => {
   try {
     const res = await fetch("/api/tournament-status");
@@ -68,20 +73,65 @@ const fetchTournamentStatus = useCallback(async () => {
     // Set a default state to prevent infinite retries
     setTournamentStatus(null);
   }
-}, []);
+}, []); // No dependencies - stable function
 
+  // Initial fetch on mount only
   useEffect(() => {
     fetchLeaderboard();
     fetchTournamentStatus();
-    
-    // Check tournament status every 30 seconds, but only if tournament features are working
-    const statusInterval = setInterval(() => {
-      if (tournamentStatus !== null) { // Only retry if we've had success before
-        fetchTournamentStatus();
+  }, [fetchLeaderboard, fetchTournamentStatus]); // Include dependencies
+  
+  // Smart tournament checking - only check when needed
+  useEffect(() => {
+    // Function to calculate if we should be checking
+    const shouldCheck = () => {
+      const now = new Date();
+      const currentDay = now.getDay(); // 0 = Sunday, 3 = Wednesday
+      const currentHour = now.getHours();
+      
+      // If tournament is active, countdown, or break - check frequently
+      if (tournamentStatus && ['active', 'countdown', 'break'].includes(tournamentStatus.status)) {
+        return { check: true, frequency: 30000 }; // Every 30 seconds during tournament
       }
-    }, 30000);
+      
+      // Only check on Wednesday or near Wednesday tournament time
+      if (currentDay === 3) { // Wednesday
+        // Check more frequently on tournament day (especially near 2-4pm UTC)
+        if (currentHour >= 13 && currentHour <= 16) { // 1pm-4pm UTC (covers UTC+1 3pm)
+          return { check: true, frequency: 60000 }; // Every minute on tournament day
+        }
+        return { check: true, frequency: 300000 }; // Every 5 minutes on Wednesday
+      }
+      
+      // Tuesday evening - countdown starts at 11pm Lagos time (10pm UTC)
+      if (currentDay === 2 && currentHour >= 22) { // Tuesday after 10pm UTC (11pm Lagos)
+        return { check: true, frequency: 60000 }; // Every minute during countdown
+      } else if (currentDay === 2 && currentHour >= 20) { // Tuesday after 8pm UTC
+        return { check: true, frequency: 300000 }; // Every 5 minutes before countdown
+      }
+      
+      // All other times - no need to check
+      return { check: false, frequency: 0 };
+    };
+    
+    const { check, frequency } = shouldCheck();
+    
+    if (!check) {
+      // No tournament checking needed right now
+      return;
+    }
+    
+    const statusInterval = setInterval(() => {
+      fetchTournamentStatus();
+    }, frequency);
+    
     return () => clearInterval(statusInterval);
-  }, [fetchLeaderboard, fetchTournamentStatus, tournamentStatus]);
+  }, [tournamentStatus, fetchTournamentStatus]);
+  
+  // Fetch leaderboard when type changes
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [leaderboardType, fetchLeaderboard]);
   
   // Tournament countdown effect
   useEffect(() => {
@@ -105,10 +155,15 @@ const fetchTournamentStatus = useCallback(async () => {
     };
     
     updateCountdown();
-    const countdownInterval = setInterval(updateCountdown, 1000);
+    
+    // Only update countdown every second when actively counting down
+    const isActiveCountdown = tournamentStatus.status === 'countdown' || 
+                             (tournamentStatus.status === 'scheduled' && countdown > 0);
+    
+    const countdownInterval = setInterval(updateCountdown, isActiveCountdown ? 1000 : 5000);
     
     return () => clearInterval(countdownInterval);
-  }, [tournamentStatus, fetchTournamentStatus]);
+  }, [tournamentStatus, countdown, fetchTournamentStatus]);
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
@@ -171,7 +226,11 @@ const submitScore = useCallback(
             round: tournamentMode ? currentRound : 1
           }),
         });
+        
+        // Debounce leaderboard fetch to prevent rapid requests
+        setTimeout(() => {
         fetchLeaderboard();
+        }, 1000);
         
         // If in tournament mode and completed successfully, advance to next round
         if (tournamentMode && !timeout && currentRound < 5) {
@@ -428,11 +487,11 @@ useEffect(() => {
         <div className="start-content">
           <h2>Welcome to Ritual Puzzle!</h2>
           <p>Test your skills with this challenging sliding picture puzzle.</p>
-          <input
-            type="text"
+        <input
+          type="text"
             placeholder="Enter your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
             className="username-input"
           />
           
@@ -461,8 +520,8 @@ useEffect(() => {
           )}
           
           <button onClick={startGame} className="start-btn" disabled={!username}>
-            Start Game
-          </button>
+          Start Game
+        </button>
         </div>
       </div>
     );

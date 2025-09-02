@@ -11,10 +11,39 @@ const TOURNAMENT_CONFIG = {
   defaultHour: 15, // 3 PM
   defaultMinute: 0,
   timezone: 'Africa/Lagos', // UTC+1
-  countdownMinutes: 30,
+  countdownStartDay: 2, // Tuesday
+  countdownStartHour: 23, // 11 PM Africa/Lagos time
+  countdownStartMinute: 0,
   breakMinutes: 15,
   totalRounds: 5
 };
+
+/**
+ * Get the countdown start time (Tuesday 11pm Africa/Lagos = 10pm UTC)
+ */
+export function getCountdownStartTime(customSchedule = null) {
+  const config = customSchedule || TOURNAMENT_CONFIG;
+  const now = new Date();
+  
+  const countdownStart = new Date();
+  const daysUntilTuesday = (config.countdownStartDay - now.getDay() + 7) % 7;
+  
+  // If today is Tuesday and we haven't reached countdown start time yet
+  if (daysUntilTuesday === 0 && now.getHours() < (config.countdownStartHour - 1)) {
+    // Countdown starts today
+    countdownStart.setDate(now.getDate());
+  } else {
+    // Countdown starts next Tuesday
+    countdownStart.setDate(now.getDate() + (daysUntilTuesday || 7));
+  }
+  
+  countdownStart.setHours(config.countdownStartHour - 1); // Convert UTC+1 to UTC (10 PM UTC = 11 PM Lagos)
+  countdownStart.setMinutes(config.countdownStartMinute);
+  countdownStart.setSeconds(0);
+  countdownStart.setMilliseconds(0);
+  
+  return countdownStart;
+}
 
 /**
  * Get the next scheduled tournament time
@@ -23,20 +52,23 @@ export function getNextTournamentTime(customSchedule = null) {
   const config = customSchedule || TOURNAMENT_CONFIG;
   const now = new Date();
   
-  // Calculate next Wednesday at 3 PM UTC+1
+  // Calculate next Wednesday at 3 PM UTC+1 (2 PM UTC)
   const nextTournament = new Date();
   const daysUntilWednesday = (config.defaultDay - now.getDay() + 7) % 7;
   
-  nextTournament.setDate(now.getDate() + daysUntilWednesday);
-  nextTournament.setHours(config.defaultHour - 1); // Convert UTC+1 to UTC
+  // If today is Wednesday and we haven't reached tournament time yet
+  if (daysUntilWednesday === 0 && now.getHours() < (config.defaultHour - 1)) {
+    // Tournament is today
+    nextTournament.setDate(now.getDate());
+  } else {
+    // Tournament is on next Wednesday
+    nextTournament.setDate(now.getDate() + (daysUntilWednesday || 7));
+  }
+  
+  nextTournament.setHours(config.defaultHour - 1); // Convert UTC+1 to UTC (2 PM UTC = 3 PM UTC+1)
   nextTournament.setMinutes(config.defaultMinute);
   nextTournament.setSeconds(0);
   nextTournament.setMilliseconds(0);
-  
-  // If we've passed this week's tournament time, go to next week
-  if (nextTournament <= now) {
-    nextTournament.setDate(nextTournament.getDate() + 7);
-  }
   
   return nextTournament;
 }
@@ -74,12 +106,28 @@ export async function getTournamentStatus() {
     
     // No active tournament, calculate next scheduled one
     const nextTime = getNextTournamentTime();
+    const countdownStart = getCountdownStartTime();
+    
+    // Check if we should be in countdown mode now (Tuesday 11pm Lagos time)
+    let status = 'scheduled';
+    if (now >= countdownStart && now < nextTime) {
+      status = 'countdown';
+      
+      // Auto-create tournament entry in database if we're in countdown
+      try {
+        const tournament = await scheduleTournament(nextTime, null);
+        await updateTournamentStatus(tournament.id, 'countdown');
+      } catch (error) {
+        console.log('Tournament may already exist in database');
+      }
+    }
+    
     return {
-      status: 'scheduled',
+      status: status,
       scheduled_start: nextTime,
       startTime: nextTime,
-      countdownStart: new Date(nextTime.getTime() - (TOURNAMENT_CONFIG.countdownMinutes * 60 * 1000)),
-      timeUntilCountdown: Math.max(0, nextTime.getTime() - (TOURNAMENT_CONFIG.countdownMinutes * 60 * 1000) - now.getTime()),
+      countdownStart: countdownStart,
+      timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
       timeUntilStart: Math.max(0, nextTime.getTime() - now.getTime()),
       currentRound: 0,
       totalRounds: TOURNAMENT_CONFIG.totalRounds
