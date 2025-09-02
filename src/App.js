@@ -128,37 +128,39 @@ const fetchTournamentStatus = useCallback(async () => {
     fetchLeaderboard();
   }, [leaderboardType, fetchLeaderboard]);
   
-  // Tournament countdown effect
+  // Tournament countdown effect - calculate time dynamically
   useEffect(() => {
     if (!tournamentStatus) return;
     
     const updateCountdown = () => {
+      const now = new Date();
       let timeLeft = 0;
       
-      if (tournamentStatus.status === 'scheduled') {
-        timeLeft = tournamentStatus.timeUntilCountdown;
-      } else if (tournamentStatus.status === 'countdown') {
-        timeLeft = tournamentStatus.timeUntilStart;
+      if (tournamentStatus.status === 'scheduled' && tournamentStatus.countdownStart) {
+        // Time until countdown starts
+        timeLeft = new Date(tournamentStatus.countdownStart) - now;
+      } else if (tournamentStatus.status === 'countdown' && (tournamentStatus.startTime || tournamentStatus.scheduled_start)) {
+        // Time until tournament starts
+        const startTime = tournamentStatus.startTime || tournamentStatus.scheduled_start;
+        timeLeft = new Date(startTime) - now;
       }
       
       if (timeLeft > 0) {
         setCountdown(Math.ceil(timeLeft / 1000));
       } else {
         setCountdown(null);
-        // Status will be updated by the smart checking logic
+        // Tournament status should update automatically
       }
     };
     
+    // Update immediately
     updateCountdown();
     
-    // Only update countdown every second when actively counting down
-    const isActiveCountdown = tournamentStatus.status === 'countdown' || 
-                             (tournamentStatus.status === 'scheduled' && countdown > 0);
-    
-    const countdownInterval = setInterval(updateCountdown, isActiveCountdown ? 10000 : 60000);
+    // Update every second for smooth countdown
+    const countdownInterval = setInterval(updateCountdown, 1000);
     
     return () => clearInterval(countdownInterval);
-  }, [tournamentStatus, countdown, fetchTournamentStatus]);
+  }, [tournamentStatus]); // Remove countdown and fetchTournamentStatus from dependencies
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
