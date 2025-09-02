@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { verifyAdminSession } from "./admin-auth.js";
-import tournamentScheduler from "./tournament-scheduler.js";
+import { getTournamentStatus, scheduleTournament, updateTournamentStatus } from "./tournament-scheduler.js";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -8,11 +8,11 @@ const pool = new Pool({
 });
 
 export default async function handler(req, res) {
-  // Verify admin authentication
-  const sessionToken = req.headers.authorization?.replace('Bearer ', '');
-  const adminSession = await verifyAdminSession(sessionToken);
+  // Simple admin verification using environment key
+  const adminKey = req.headers.authorization?.replace('Bearer ', '');
+  const isAdmin = await verifyAdminSession(adminKey);
   
-  if (!adminSession) {
+  if (!isAdmin) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       
       if (action === "status") {
         // Get tournament status and general stats
-        const tournamentStatus = await tournamentScheduler.getTournamentStatus();
+        const tournamentStatus = await getTournamentStatus();
         
         const statsResult = await pool.query(`
           SELECT 
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
         const { startTime } = req.body;
         const start = startTime ? new Date(startTime) : new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now if not specified
         
-        const tournament = await tournamentScheduler.scheduleTournament(start, adminSession.admin_id);
+        const tournament = await scheduleTournament(start, null);
         res.status(200).json({ success: true, tournament });
         
       } else if (action === "stop_tournament") {
@@ -77,31 +77,31 @@ export default async function handler(req, res) {
         
         if (!tournamentId) {
           // Stop current active tournament
-          const status = await tournamentScheduler.getTournamentStatus();
+          const status = await getTournamentStatus();
           if (status && status.id) {
-            await tournamentScheduler.updateTournamentStatus(status.id, 'stopped');
+            await updateTournamentStatus(status.id, 'stopped');
           }
         } else {
-          await tournamentScheduler.updateTournamentStatus(tournamentId, 'stopped');
+          await updateTournamentStatus(tournamentId, 'stopped');
         }
         
         res.status(200).json({ success: true });
         
       } else if (action === "next_round") {
-        const status = await tournamentScheduler.getTournamentStatus();
+        const status = await getTournamentStatus();
         
         if (status && status.id && status.currentRound < status.totalRounds) {
-          await tournamentScheduler.updateTournamentStatus(status.id, 'active', status.currentRound + 1);
+          await updateTournamentStatus(status.id, 'active', status.currentRound + 1);
           res.status(200).json({ success: true, newRound: status.currentRound + 1 });
         } else {
           res.status(400).json({ error: "No active tournament or max rounds reached" });
         }
         
       } else if (action === "complete_tournament") {
-        const status = await tournamentScheduler.getTournamentStatus();
+        const status = await getTournamentStatus();
         
         if (status && status.id) {
-          await tournamentScheduler.updateTournamentStatus(status.id, 'completed');
+          await updateTournamentStatus(status.id, 'completed');
           res.status(200).json({ success: true });
         } else {
           res.status(400).json({ error: "No active tournament" });

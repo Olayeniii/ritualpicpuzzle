@@ -41,10 +41,15 @@ const fetchLeaderboard = useCallback(async () => {
     }
     
     const res = await fetch(url);
+    if (!res.ok) {
+      console.error("Leaderboard API error:", res.status, res.statusText);
+      return; // Don't update state on error
+    }
     const data = await res.json();
     setLeaderboard(data);
   } catch (err) {
     console.error("Failed to fetch leaderboard:", err);
+    // Keep existing leaderboard on error to prevent UI flashing
   }
 }, [leaderboardType]);
 
@@ -52,10 +57,16 @@ const fetchLeaderboard = useCallback(async () => {
 const fetchTournamentStatus = useCallback(async () => {
   try {
     const res = await fetch("/api/tournament-status");
+    if (!res.ok) {
+      console.error("Tournament status API error:", res.status, res.statusText);
+      return; // Don't update state on error
+    }
     const data = await res.json();
     setTournamentStatus(data);
   } catch (err) {
     console.error("Failed to fetch tournament status:", err);
+    // Set a default state to prevent infinite retries
+    setTournamentStatus(null);
   }
 }, []);
 
@@ -63,10 +74,14 @@ const fetchTournamentStatus = useCallback(async () => {
     fetchLeaderboard();
     fetchTournamentStatus();
     
-    // Check tournament status every 30 seconds
-    const statusInterval = setInterval(fetchTournamentStatus, 30000);
+    // Check tournament status every 30 seconds, but only if tournament features are working
+    const statusInterval = setInterval(() => {
+      if (tournamentStatus !== null) { // Only retry if we've had success before
+        fetchTournamentStatus();
+      }
+    }, 30000);
     return () => clearInterval(statusInterval);
-  }, [fetchLeaderboard, fetchTournamentStatus]);
+  }, [fetchLeaderboard, fetchTournamentStatus, tournamentStatus]);
   
   // Tournament countdown effect
   useEffect(() => {

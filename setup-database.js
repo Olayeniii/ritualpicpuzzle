@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import migrateDatabase from './api/migrate-database.js';
-import { createDefaultAdmin } from './api/admin-auth.js';
 
 console.log('🚀 Setting up Ritual Puzzle database...');
 console.log('📊 Running database migrations...');
