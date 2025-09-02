@@ -14,7 +14,7 @@ const TOURNAMENT_CONFIG = {
   countdownStartDay: 2, // Tuesday
   countdownStartHour: 23, // 11 PM Lagos
   countdownStartMinute: 0,
-  breakMinutes: 15,
+  breakMinutes: 5,
   totalRounds: 5,
 };
 
