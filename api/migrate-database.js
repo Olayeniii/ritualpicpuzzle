@@ -60,37 +60,13 @@ async function migrateDatabase() {
       );
     `);
     
-    // Create admin_users table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_login TIMESTAMP NULL
-      );
-    `);
+    // Admin authentication now uses environment variables only
+    // No database tables needed for admin system
     
-    // Create admin_sessions table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS admin_sessions (
-        id SERIAL PRIMARY KEY,
-        admin_id INTEGER REFERENCES admin_users(id),
-        session_token VARCHAR(255) UNIQUE NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    
-    // Add indexes for new tables
+    // Add indexes for tournament table
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_tournament_schedule_status 
       ON tournament_schedule(status, scheduled_start);
-    `);
-    
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_admin_sessions_token 
-      ON admin_sessions(session_token, expires_at);
     `);
     
     console.log("Database migration completed successfully!");

@@ -61,10 +61,6 @@
 - **`tournament_schedule`**: Manages tournament timing and status
   - `id`, `scheduled_start`, `status`, `current_round`, `total_rounds`
   - `created_by`, `created_at`, `updated_at`
-- **`admin_users`**: Admin authentication
-  - `id`, `username`, `password_hash`, `created_at`, `last_login`
-- **`admin_sessions`**: Session management
-  - `id`, `admin_id`, `session_token`, `expires_at`, `created_at`
 
 ### Enhanced `leaderboard` table:
 - `created_at` (TIMESTAMP): When the score was submitted
@@ -75,7 +71,7 @@
 - `idx_leaderboard_created_at`: For efficient weekly queries
 - `idx_leaderboard_round_timeout`: For efficient tournament queries
 - `idx_tournament_schedule_status`: For tournament status queries
-- `idx_admin_sessions_token`: For session validation
+
 
 ## API Endpoints
 
