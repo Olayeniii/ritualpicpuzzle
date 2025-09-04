@@ -22,14 +22,15 @@ export default async function handler(req, res) {
           username,
           SUM(moves) as total_moves,
           SUM(time) as total_time,
-          COUNT(CASE WHEN timeout = false THEN 1 END) as rounds_completed,
+          COUNT(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN 1 END) as rounds_completed,
           ARRAY_AGG(round ORDER BY round) as completed_rounds,
-          COUNT(CASE WHEN timeout = true THEN 1 END) as timeout_rounds
+          COUNT(CASE WHEN timeout = true OR time >= 300 THEN 1 END) as timeout_rounds
          FROM leaderboard
          WHERE round IN (1, 2, 3, 4, 5)
          AND created_at >= date_trunc('week', now())
          AND created_at < date_trunc('week', now()) + interval '7 days'
-         AND timeout = false
+         AND (timeout = false OR timeout IS NULL)
+         AND time < 300
          GROUP BY username
          ORDER BY rounds_completed DESC, total_moves ASC, total_time ASC`
       );
@@ -38,7 +39,8 @@ export default async function handler(req, res) {
       result = await pool.query(
         `SELECT username, moves, time, created_at
          FROM leaderboard
-         WHERE timeout = false
+         WHERE (timeout = false OR timeout IS NULL)
+         AND time < 300
          AND round = $1
          AND created_at >= date_trunc('week', now())
          AND created_at < date_trunc('week', now()) + interval '7 days'
