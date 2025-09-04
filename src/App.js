@@ -160,7 +160,7 @@ const fetchTournamentStatus = useCallback(async () => {
     const countdownInterval = setInterval(updateCountdown, 1000);
     
     return () => clearInterval(countdownInterval);
-  }, [tournamentStatus]); // Remove countdown and fetchTournamentStatus from dependencies
+  }, [tournamentStatus]); // 
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
@@ -205,8 +205,11 @@ const fetchTournamentStatus = useCallback(async () => {
       const id = setInterval(() => setTimer((t) => t + 1), 1000);
       setIntervalId(id);
       return () => clearInterval(id);
+    } else if (intervalId) {
+      clearInterval(intervalId);
+      setIntervalId(null);
     }
-  }, [gameStarted, gameOver]);
+  }, [gameStarted, gameOver, intervalId]);
 
   // submit score
 const submitScore = useCallback(
@@ -243,7 +246,7 @@ const submitScore = useCallback(
   // auto game over if time > MAX_TIME
   useEffect(() => {
     if (gameStarted && timer >= MAX_TIME && !gameOver) {
-      clearInterval(intervalId);
+      if (intervalId) clearInterval(intervalId);
       setGameOver(true);
       submitScore(true); // mark timeout
     }
@@ -288,7 +291,7 @@ const handleAdminLogin = async () => {
     
     const data = await res.json();
     if (data.isAdmin) {
-      setAdminAuth({ user: { username } });
+      setAdminAuth({ user: { username }, adminKey: adminKey.trim() });
       setShowAdminPanel(true);
       setShowAdminKey(false);
       setAdminKey("");
@@ -490,6 +493,17 @@ useEffect(() => {
             <RitualLogo size={40} />
           </div>
           <h1 className="title">Ritual Puzzle</h1>
+          
+          {/* Admin Settings Button - only visible when admin is logged in */}
+          {adminAuth && (
+            <button 
+              className="admin-settings-btn"
+              onClick={() => setShowAdminPanel(true)}
+              title="Open Admin Panel"
+            >
+              ⚙️
+            </button>
+          )}
         </header>
         <div className="start-content">
           <h2>Welcome to Ritual Puzzle!</h2>
@@ -541,10 +555,28 @@ useEffect(() => {
   return (
     <div className="app">
       <header className="site-header">
-        <div className="logo">
+        <div 
+          className="logo admin-trigger"
+          onMouseDown={handleLogoMouseDown}
+          onMouseUp={handleLogoMouseUp}
+          onTouchStart={handleLogoMouseDown}
+          onTouchEnd={handleLogoMouseUp}
+          title="Long press for 3 seconds or Ctrl+Shift+A for admin access"
+        >
           <RitualLogo size={40} />
         </div>
         <h1 className="title">Ritual Puzzle</h1>
+        
+        {/* Admin Settings Button - only visible when admin is logged in */}
+        {adminAuth && (
+          <button 
+            className="admin-settings-btn"
+            onClick={() => setShowAdminPanel(true)}
+            title="Open Admin Panel"
+          >
+            ⚙️
+          </button>
+        )}
       </header>
 
       {/* Tournament Status & Countdown */}
@@ -742,7 +774,7 @@ function AdminDashboard({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${adminAuth.sessionToken}`
+          "Authorization": `Bearer ${adminAuth.adminKey}`
         },
         body: JSON.stringify(data)
       });

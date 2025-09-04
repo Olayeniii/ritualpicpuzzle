@@ -16,20 +16,48 @@ export default async function handler(req, res) {
       if (type === "weekly") {
         query = `
           SELECT username, moves, time, created_at
-          FROM leaderboard
+          FROM leaderboard l1
           WHERE timeout = false
           AND created_at >= date_trunc('week', now())
           AND created_at < date_trunc('week', now()) + interval '7 days'
+          AND moves = (
+            SELECT MIN(moves) 
+            FROM leaderboard l2 
+            WHERE l2.username = l1.username 
+            AND l2.timeout = false
+            AND l2.created_at >= date_trunc('week', now())
+            AND l2.created_at < date_trunc('week', now()) + interval '7 days'
+          )
+          AND created_at = (
+            SELECT MAX(created_at)
+            FROM leaderboard l3
+            WHERE l3.username = l1.username 
+            AND l3.moves = l1.moves
+            AND l3.timeout = false
+            AND l3.created_at >= date_trunc('week', now())
+            AND l3.created_at < date_trunc('week', now()) + interval '7 days'
+          )
           ORDER BY moves ASC, time ASC
-          LIMIT 10
         `;
       } else {
         query = `
           SELECT username, moves, time, created_at
-          FROM leaderboard
+          FROM leaderboard l1
           WHERE timeout = false
+          AND moves = (
+            SELECT MIN(moves) 
+            FROM leaderboard l2 
+            WHERE l2.username = l1.username 
+            AND l2.timeout = false
+          )
+          AND created_at = (
+            SELECT MAX(created_at)
+            FROM leaderboard l3
+            WHERE l3.username = l1.username 
+            AND l3.moves = l1.moves
+            AND l3.timeout = false
+          )
           ORDER BY moves ASC, time ASC
-          LIMIT 10
         `;
       }
       

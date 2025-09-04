@@ -18,6 +18,7 @@ html {
   padding: 16px 20px;
   background: linear-gradient(90deg, #111, #1a0033);
   border-bottom: 2px solid #222;
+  position: relative;
 }
 
 .site-header .logo {
@@ -32,6 +33,34 @@ html {
   color: #e6e6ff;
   text-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
   letter-spacing: 1px;
+}
+
+/* Admin Settings Button */
+.admin-settings-btn {
+  position: absolute;
+  right: 20px;
+  background: rgba(138, 43, 226, 0.2);
+  border: 1px solid #8a2be2;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: #8a2be2;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-settings-btn:hover {
+  background: rgba(138, 43, 226, 0.4);
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+  transform: scale(1.05);
+}
+
+.admin-settings-btn:active {
+  transform: scale(0.95);
 }
 
 /* Start screen */

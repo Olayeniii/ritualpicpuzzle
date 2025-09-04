@@ -16,23 +16,22 @@ export default async function handler(req, res) {
     let result;
     
     if (mode === "combined") {
-      // For tournament mode: combine scores from all 5 rounds
+      // For tournament mode: combine scores from all rounds, show all participants
       result = await pool.query(
         `SELECT 
           username,
           SUM(moves) as total_moves,
           SUM(time) as total_time,
-          COUNT(*) as rounds_completed,
+          COUNT(CASE WHEN timeout = false THEN 1 END) as rounds_completed,
           ARRAY_AGG(round ORDER BY round) as completed_rounds,
           COUNT(CASE WHEN timeout = true THEN 1 END) as timeout_rounds
          FROM leaderboard
          WHERE round IN (1, 2, 3, 4, 5)
          AND created_at >= date_trunc('week', now())
          AND created_at < date_trunc('week', now()) + interval '7 days'
+         AND timeout = false
          GROUP BY username
-         HAVING COUNT(CASE WHEN timeout = false THEN 1 END) = 5
-         ORDER BY total_moves ASC, total_time ASC
-         LIMIT 10`
+         ORDER BY rounds_completed DESC, total_moves ASC, total_time ASC`
       );
     } else {
       // Single round leaderboard
