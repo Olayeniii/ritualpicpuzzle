@@ -14,7 +14,7 @@ function App() {
   const [tiles, setTiles] = useState([]);
   const [moves, setMoves] = useState(0);
   const [timer, setTimer] = useState(0);
-  const [intervalId, setIntervalId] = useState(null);
+  const timerIntervalRef = useRef(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [gameOver, setGameOver] = useState(false);
   const [achievements, setAchievements] = useState([]);
@@ -203,13 +203,19 @@ const fetchTournamentStatus = useCallback(async () => {
   useEffect(() => {
     if (gameStarted && !gameOver) {
       const id = setInterval(() => setTimer((t) => t + 1), 1000);
-      setIntervalId(id);
-      return () => clearInterval(id);
-    } else if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
+      timerIntervalRef.current = id;
+      return () => {
+        clearInterval(id);
+        timerIntervalRef.current = null;
+      };
+    } else {
+      // Clear any existing interval when game stops
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
     }
-  }, [gameStarted, gameOver, intervalId]);
+  }, [gameStarted, gameOver]);
 
   // submit score
 const submitScore = useCallback(
@@ -246,11 +252,14 @@ const submitScore = useCallback(
   // auto game over if time > MAX_TIME
   useEffect(() => {
     if (gameStarted && timer >= MAX_TIME && !gameOver) {
-      if (intervalId) clearInterval(intervalId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
       setGameOver(true);
       submitScore(true); // mark timeout
     }
-  }, [timer, gameStarted, gameOver, intervalId, submitScore]);
+  }, [timer, gameStarted, gameOver, submitScore]);
 
 
 
@@ -389,7 +398,10 @@ useEffect(() => {
       checkAchievements(newMoves, timer);
 
       if (isSolved(newTiles)) {
-        clearInterval(intervalId);
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
         setGameOver(true);
         submitScore();
       }
