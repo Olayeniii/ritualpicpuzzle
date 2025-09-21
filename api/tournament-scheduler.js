@@ -282,7 +282,7 @@ export async function checkTournamentProgress() {
     }
 
     // Auto-start countdown if it's time
-    if (status.status === "scheduled" && now >= status.countdownStart) {
+    if (status.status === "scheduled" && now >= status.countdownStart && status.id) {
       await updateTournamentStatus(status.id, "countdown");
       status.status = "countdown";
     }
