@@ -8,30 +8,30 @@ const pool = new Pool({
 // Tournament configuration
 const TOURNAMENT_CONFIG = {
   defaultDay: 3, // Wednesday (0 = Sunday, 1 = Monday, etc.)
-  defaultHour: 15, // 3 PM Lagos
+  defaultHour: 14, // 2 PM UTC (direct UTC time)
   defaultMinute: 0,
-  timezone: "Africa/Lagos",
+  timezone: "UTC",
   countdownStartDay: 2, // Tuesday
-  countdownStartHour: 23, // 11 PM Lagos
+  countdownStartHour: 13, // 1 PM UTC (1 hour before tournament)
   countdownStartMinute: 0,
   breakMinutes: 5,
   totalRounds: 5,
 };
 
 /**
- * Get the next scheduled Wednesday tournament at 3 PM Africa/Lagos
+ * Get the next scheduled Wednesday tournament at 2 PM UTC
  */
 export function getNextTournamentTime(customSchedule = null) {
   const config = customSchedule || TOURNAMENT_CONFIG;
   const now = new Date();
 
-  // Convert 3 PM Lagos → 14:00 UTC
-  const targetHourUTC = config.defaultHour - 1;
+  // Direct UTC time (no conversion needed)
+  const targetHourUTC = config.defaultHour;
 
   const nextTournament = new Date(now);
   nextTournament.setUTCHours(targetHourUTC, config.defaultMinute, 0, 0);
 
-  // Case 1: Today is Wednesday and before 3 PM Lagos
+  // Case 1: Today is Wednesday and before 2 PM UTC
   if (now.getDay() === config.defaultDay && now < nextTournament) {
     return nextTournament;
   }
@@ -44,17 +44,17 @@ export function getNextTournamentTime(customSchedule = null) {
 }
 
 /**
- * Get the countdown start time (Tuesday 11 PM Lagos = 22:00 UTC)
+ * Get the countdown start time (Tuesday 1 PM UTC)
  */
 export function getCountdownStartTime(customSchedule = null) {
   const config = customSchedule || TOURNAMENT_CONFIG;
   const nextTournament = getNextTournamentTime(config);
 
-  // Countdown starts the day before, at 11 PM Lagos (22:00 UTC)
+  // Countdown starts the day before, at 1 PM UTC
   const countdownStart = new Date(nextTournament);
   countdownStart.setDate(nextTournament.getDate() - 1);
   countdownStart.setUTCHours(
-    config.countdownStartHour - 1,
+    config.countdownStartHour,
     config.countdownStartMinute,
     0,
     0
@@ -141,7 +141,17 @@ export async function getTournamentStatus() {
     };
   } catch (error) {
     console.error("Error getting tournament status:", error);
-    throw error;
+    // Return a fallback status instead of throwing
+    return {
+      status: "scheduled",
+      scheduled_start: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      countdownStart: new Date(Date.now() + 23 * 60 * 60 * 1000), // 23 hours from now
+      timeUntilCountdown: 23 * 60 * 60 * 1000,
+      timeUntilStart: 24 * 60 * 60 * 1000,
+      currentRound: 0,
+      totalRounds: TOURNAMENT_CONFIG.totalRounds,
+    };
   }
 }
 
