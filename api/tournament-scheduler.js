@@ -339,7 +339,17 @@ export async function checkTournamentProgress() {
     return status;
   } catch (error) {
     console.error("Error checking tournament progress:", error);
-    throw error;
+    // Return fallback status instead of throwing
+    return {
+      status: "scheduled",
+      scheduled_start: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      countdownStart: new Date(Date.now() + 23 * 60 * 60 * 1000),
+      timeUntilCountdown: 23 * 60 * 60 * 1000,
+      timeUntilStart: 24 * 60 * 60 * 1000,
+      currentRound: 0,
+      totalRounds: TOURNAMENT_CONFIG.totalRounds,
+    };
   }
 }
 

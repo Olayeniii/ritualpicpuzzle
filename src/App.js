@@ -102,11 +102,6 @@ const fetchTournamentStatus = useCallback(async () => {
     };
   }, [tournamentStatus, fetchTournamentStatus]);
   
-  // Memoize countdown minutes to avoid excessive re-renders
-  const countdownMinutes = useMemo(() => {
-    return countdown > 0 ? Math.floor(countdown / 60) : 0;
-  }, [countdown]);
-  
   // Separate effect for countdown polling - only during final 5 minutes
   useEffect(() => {
     let countdownPolling;
@@ -167,7 +162,7 @@ const fetchTournamentStatus = useCallback(async () => {
     const countdownInterval = setInterval(updateCountdown, 1000);
     
     return () => clearInterval(countdownInterval);
-  }, [tournamentStatus]); // 
+  }, [tournamentStatus, fetchTournamentStatus]); 
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
