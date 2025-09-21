@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
@@ -599,7 +599,7 @@ useEffect(() => {
             <div className="tournament-info">
               <h3>🏆 Next Tournament</h3>
               <p>Countdown begins in: <strong>{formatCountdown(countdown)}</strong></p>
-              <small>Wednesday 3:00 PM UTC+1</small>
+              <small>Wednesday 2:00 PM UTC</small>
             </div>
           )}
           {tournamentStatus.status === 'countdown' && countdown && (

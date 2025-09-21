@@ -81,10 +81,18 @@ export async function getTournamentStatus() {
     if (result.rows.length > 0) {
       const tournament = result.rows[0];
       const startTime = new Date(tournament.scheduled_start);
-      const countdownStart = new Date(
-        startTime.getTime() -
-          TOURNAMENT_CONFIG.breakMinutes * 60 * 1000 // fallback if needed
-      );
+      
+      // For manual tournaments in countdown status, countdown started when created
+      // For scheduled tournaments, calculate countdown start time
+      let countdownStart;
+      if (tournament.status === 'countdown') {
+        countdownStart = new Date(tournament.created_at);
+      } else {
+        countdownStart = new Date(
+          startTime.getTime() -
+            25 * 60 * 60 * 1000 // 25 hours before (automatic tournaments)
+        );
+      }
 
       // Calculate break time remaining if in break status
       let breakTimeRemaining = 0;
