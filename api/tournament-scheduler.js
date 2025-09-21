@@ -288,7 +288,7 @@ export async function checkTournamentProgress() {
     }
 
     // Auto-start tournament if countdown is over
-    if (status.status === "countdown" && now >= status.startTime) {
+    if (status.status === "countdown" && now >= status.startTime && status.id) {
       await updateTournamentStatus(status.id, "active", 1);
       status.status = "active";
       status.currentRound = 1;

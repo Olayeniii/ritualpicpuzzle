@@ -107,21 +107,27 @@ const fetchTournamentStatus = useCallback(async () => {
     return countdown > 0 ? Math.floor(countdown / 60) : 0;
   }, [countdown]);
   
-  // Separate effect for countdown final minutes checking
+  // Separate effect for countdown polling - only during final 5 minutes
   useEffect(() => {
     let countdownPolling;
     
-    // Only check final 5 minutes of countdown
-    if (tournamentStatus?.status === 'countdown' && countdownMinutes > 0 && countdownMinutes <= 5) {
-      countdownPolling = setInterval(() => {
-        fetchTournamentStatus();
-      }, 60000); // Every minute in final 5 minutes
+    // Only poll during the final 5 minutes of countdown (both manual and automatic)
+    if (tournamentStatus?.status === 'countdown' && countdown > 0) {
+      const countdownMinutes = Math.floor(countdown / 60);
+      
+      if (countdownMinutes <= 5) {
+        const pollInterval = countdownMinutes <= 1 ? 5000 : 10000; // Every 5 seconds in final minute, every 10 seconds in final 5 minutes
+        countdownPolling = setInterval(() => {
+          fetchTournamentStatus();
+        }, pollInterval);
+      }
+      // No polling for longer countdowns - let normal refresh handle it
     }
     
     return () => {
       if (countdownPolling) clearInterval(countdownPolling);
     };
-  }, [tournamentStatus?.status, countdownMinutes, fetchTournamentStatus]); // Remove countdown dependency, use countdownMinutes only
+  }, [tournamentStatus?.status, countdown, fetchTournamentStatus]);
   
   // Fetch leaderboard when type changes
   useEffect(() => {
@@ -149,7 +155,8 @@ const fetchTournamentStatus = useCallback(async () => {
         setCountdown(Math.ceil(timeLeft / 1000));
       } else {
         setCountdown(null);
-        // Tournament status should update automatically
+        // Immediately check tournament status when countdown reaches zero
+        fetchTournamentStatus();
       }
     };
     

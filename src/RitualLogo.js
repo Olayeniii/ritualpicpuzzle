@@ -1,4 +1,4 @@
-// RitualLogo.jsx
+
 export default function RitualLogo({ size = 40 }) {
   return (
    <svg

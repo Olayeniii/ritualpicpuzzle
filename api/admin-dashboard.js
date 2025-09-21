@@ -70,6 +70,8 @@ export default async function handler(req, res) {
         const start = startTime ? new Date(startTime) : new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now if not specified
         
         const tournament = await scheduleTournament(start, null);
+        // Immediately set to countdown status for manual tournaments
+        await updateTournamentStatus(tournament.id, "countdown");
         res.status(200).json({ success: true, tournament });
         
       } else if (action === "stop_tournament") {
