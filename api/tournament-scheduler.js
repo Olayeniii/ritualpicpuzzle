@@ -86,6 +86,14 @@ export async function getTournamentStatus() {
           TOURNAMENT_CONFIG.breakMinutes * 60 * 1000 // fallback if needed
       );
 
+      // Calculate break time remaining if in break status
+      let breakTimeRemaining = 0;
+      if (tournament.status === 'break') {
+        const breakStartTime = new Date(tournament.updated_at);
+        const breakDurationMs = TOURNAMENT_CONFIG.breakMinutes * 60 * 1000;
+        breakTimeRemaining = Math.max(0, breakDurationMs - (now.getTime() - breakStartTime.getTime()));
+      }
+
       return {
         ...tournament,
         startTime,
@@ -97,6 +105,7 @@ export async function getTournamentStatus() {
         timeUntilStart: Math.max(0, startTime.getTime() - now.getTime()),
         currentRound: tournament.current_round || 0,
         totalRounds: TOURNAMENT_CONFIG.totalRounds,
+        breakTimeRemaining: Math.floor(breakTimeRemaining / 1000), // in seconds
       };
     }
 
@@ -176,6 +185,11 @@ export async function updateTournamentStatus(
       updateData.push(currentRound);
     }
 
+    // Add round_start_time when starting a new round
+    if (status === "active" && currentRound !== null) {
+      query += ", round_start_time = CURRENT_TIMESTAMP";
+    }
+
     query += " WHERE id = $2 RETURNING *";
 
     const result = await pool.query(query, updateData);
@@ -183,6 +197,75 @@ export async function updateTournamentStatus(
   } catch (error) {
     console.error("Error updating tournament status:", error);
     throw error;
+  }
+}
+
+/**
+ * Check if current round should advance to break period
+ * A round should advance after it's been active for a reasonable time to allow gameplay
+ */
+export async function checkRoundProgression(tournamentId, currentRound) {
+  try {
+    // Get tournament info to check round start time
+    const result = await pool.query(
+      "SELECT round_start_time, updated_at FROM tournament_schedule WHERE id = $1",
+      [tournamentId]
+    );
+
+    if (result.rows.length === 0) {
+      return { shouldAdvance: false };
+    }
+
+    const tournament = result.rows[0];
+    const now = new Date();
+    const roundStartTime = new Date(tournament.round_start_time || tournament.updated_at);
+    
+    // Allow 6 minutes for each round (5 minutes gameplay + 1 minute buffer)
+    const roundDurationMs = 6 * 60 * 1000;
+    const timeSinceRoundStart = now.getTime() - roundStartTime.getTime();
+
+    return {
+      shouldAdvance: timeSinceRoundStart >= roundDurationMs,
+      timeSinceStart: timeSinceRoundStart,
+      timeRemaining: Math.max(0, roundDurationMs - timeSinceRoundStart)
+    };
+  } catch (error) {
+    console.error("Error checking round progression:", error);
+    return { shouldAdvance: false };
+  }
+}
+
+/**
+ * Check if break period should advance to next round
+ */
+export async function checkBreakProgression(tournamentId, currentRound) {
+  try {
+    // Get tournament info to check when break started
+    const result = await pool.query(
+      "SELECT updated_at FROM tournament_schedule WHERE id = $1",
+      [tournamentId]
+    );
+
+    if (result.rows.length === 0) {
+      return { shouldAdvance: false };
+    }
+
+    const tournament = result.rows[0];
+    const now = new Date();
+    const breakStartTime = new Date(tournament.updated_at);
+    
+    // Break duration in milliseconds
+    const breakDurationMs = TOURNAMENT_CONFIG.breakMinutes * 60 * 1000;
+    const timeSinceBreakStart = now.getTime() - breakStartTime.getTime();
+
+    return {
+      shouldAdvance: timeSinceBreakStart >= breakDurationMs,
+      timeSinceStart: timeSinceBreakStart,
+      timeRemaining: Math.max(0, breakDurationMs - timeSinceBreakStart)
+    };
+  } catch (error) {
+    console.error("Error checking break progression:", error);
+    return { shouldAdvance: false };
   }
 }
 
@@ -211,6 +294,38 @@ export async function checkTournamentProgress() {
       status.currentRound = 1;
     }
 
+    // Handle automatic round progression during active tournament
+    if (status.status === "active" && status.id) {
+      const roundProgress = await checkRoundProgression(status.id, status.currentRound);
+      if (roundProgress.shouldAdvance) {
+        if (status.currentRound < TOURNAMENT_CONFIG.totalRounds) {
+          // Move to break status
+          await updateTournamentStatus(status.id, "break", status.currentRound);
+          status.status = "break";
+        } else {
+          // Tournament completed
+          await updateTournamentStatus(status.id, "completed");
+          status.status = "completed";
+        }
+      }
+    }
+
+    // Handle break period and auto-advance to next round
+    if (status.status === "break" && status.id) {
+      const breakProgress = await checkBreakProgression(status.id, status.currentRound);
+      if (breakProgress.shouldAdvance) {
+        const nextRound = status.currentRound + 1;
+        if (nextRound <= TOURNAMENT_CONFIG.totalRounds) {
+          await updateTournamentStatus(status.id, "active", nextRound);
+          status.status = "active";
+          status.currentRound = nextRound;
+        } else {
+          await updateTournamentStatus(status.id, "completed");
+          status.status = "completed";
+        }
+      }
+    }
+
     return status;
   } catch (error) {
     console.error("Error checking tournament progress:", error);
@@ -223,6 +338,8 @@ export default {
   scheduleTournament,
   updateTournamentStatus,
   checkTournamentProgress,
+  checkRoundProgression,
+  checkBreakProgression,
   getNextTournamentTime,
   TOURNAMENT_CONFIG,
 };

@@ -183,6 +183,7 @@ const fetchTournamentStatus = useCallback(async () => {
       case 'break':
         // During breaks, show tournament progress
         setTournamentMode(true);
+        setCurrentRound(tournamentStatus.currentRound || 1);
         setLeaderboardType('tournament');
         break;
         
@@ -238,10 +239,8 @@ const submitScore = useCallback(
         fetchLeaderboard();
         }, 1000);
         
-        // If in tournament mode and completed successfully, advance to next round
-        if (tournamentMode && !timeout && currentRound < 5) {
-          setCurrentRound(prev => prev + 1);
-        }
+        // In tournament mode, the round progression is now handled by the server
+        // The frontend will sync with backend tournament status via fetchTournamentStatus
       } catch (err) {
         console.error("Failed to submit score:", err);
       }
@@ -618,7 +617,11 @@ useEffect(() => {
           {tournamentStatus.status === 'break' && (
             <div className="tournament-info break">
               <h3>☕ Tournament Break</h3>
-              <p>Next round starts soon...</p>
+              {tournamentStatus.breakTimeRemaining ? (
+                <p>Next round starts in: <strong>{formatCountdown(tournamentStatus.breakTimeRemaining)}</strong></p>
+              ) : (
+                <p>Next round starts soon...</p>
+              )}
               <small>Round {(tournamentStatus.currentRound || 1) + 1} of {tournamentStatus.totalRounds || 5}</small>
             </div>
           )}

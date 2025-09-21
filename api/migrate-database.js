@@ -56,8 +56,15 @@ async function migrateDatabase() {
         total_rounds INTEGER DEFAULT 5,
         created_by INTEGER NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        round_start_time TIMESTAMP NULL
       );
+    `);
+    
+    // Add round_start_time column if it doesn't exist (for existing installations)
+    await pool.query(`
+      ALTER TABLE tournament_schedule 
+      ADD COLUMN IF NOT EXISTS round_start_time TIMESTAMP NULL;
     `);
     
     // Admin authentication now uses environment variables only
