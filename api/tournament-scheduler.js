@@ -80,18 +80,16 @@ export async function getTournamentStatus() {
 
     if (result.rows.length > 0) {
       const tournament = result.rows[0];
-      const startTime = new Date(tournament.scheduled_start);
-      
-      // For manual tournaments in countdown status, countdown started when created
-      // For scheduled tournaments, calculate countdown start time
+      let startTime = new Date(tournament.scheduled_start);
       let countdownStart;
-      if (tournament.status === 'countdown') {
+
+      if (tournament.mode === 'manual') {
+        // Manual: countdown began at creation, startTime already set to now + 5m
         countdownStart = new Date(tournament.created_at);
+        startTime = new Date(tournament.scheduled_start);
       } else {
-        countdownStart = new Date(
-          startTime.getTime() -
-            25 * 60 * 60 * 1000 // 25 hours before (automatic tournaments)
-        );
+        // Auto: 25h before weekly start
+        countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
       }
 
       // Calculate break time remaining if in break status
@@ -166,16 +164,36 @@ export async function getTournamentStatus() {
 /**
  * Create a new tournament schedule
  */
-export async function scheduleTournament(startTime, adminId = null) {
+export async function scheduleTournament(startTime = null, adminId = null, mode = 'auto', consumeScheduled = false) {
   try {
+    const now = new Date();
+    let scheduledStart = startTime ? new Date(startTime) : null;
+    let status = 'scheduled';
+
+    if (mode === 'manual') {
+      // Manual: default to now + 5 minutes and start in countdown
+      if (!scheduledStart) scheduledStart = new Date(now.getTime() + 5 * 60 * 1000);
+      status = 'countdown';
+    } else {
+      // Auto: default to next weekly scheduled start
+      if (!scheduledStart) scheduledStart = getNextTournamentTime();
+      status = 'scheduled';
+    }
+
+    // If consuming the scheduled slot, align to the next scheduled start
+    if (consumeScheduled && mode === 'manual') {
+      scheduledStart = getNextTournamentTime();
+      status = 'countdown';
+    }
+
     const result = await pool.query(
       `
       INSERT INTO tournament_schedule 
-      (scheduled_start, status, total_rounds, created_by, created_at)
-      VALUES ($1, 'scheduled', $2, $3, CURRENT_TIMESTAMP)
+      (scheduled_start, status, total_rounds, created_by, created_at, mode)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
       RETURNING *
     `,
-      [startTime, TOURNAMENT_CONFIG.totalRounds, adminId]
+      [scheduledStart, status, TOURNAMENT_CONFIG.totalRounds, adminId, mode]
     );
 
     return result.rows[0];

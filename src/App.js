@@ -48,6 +48,8 @@ function App() {
         url += "?type=weekly";
       } else if (currentType === "tournament") {
         url = `/api/tournament?round=1&mode=combined`;
+      } else if (currentType === "final") {
+        url = `/api/tournament-final`;
       }
       
       const res = await fetch(url);
@@ -170,9 +172,14 @@ const fetchTournamentStatus = useCallback(async () => {
     
     switch (tournamentStatus.status) {
       case 'countdown':
-        // Show this week's leaderboard during countdown
-        setLeaderboardType('weekly');
-        setTournamentMode(false);
+        // Manual countdown shows tournament UI; auto shows weekly
+        if (tournamentStatus.mode === 'manual') {
+          setTournamentMode(true);
+          setLeaderboardType('tournament');
+        } else {
+          setTournamentMode(false);
+          setLeaderboardType('weekly');
+        }
         break;
         
       case 'active':
@@ -691,6 +698,7 @@ useEffect(() => {
     <h2>
       {leaderboardType === 'tournament' ? '🏆 Tournament Leaderboard' : 
        leaderboardType === 'weekly' ? '📅 This Week' : 
+       leaderboardType === 'final' ? '🏅 Final Tournament Results' : 
        '🏅 All Time Leaderboard'}
     </h2>
     {tournamentMode && (
@@ -702,10 +710,22 @@ useEffect(() => {
   <table>
     <thead>
       <tr>
-        <th>Rank</th>
-        <th>Player</th>
-        <th>Moves</th>
-        <th>Time (s)</th>
+        {leaderboardType === 'final' ? (
+          <>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Rounds Won</th>
+            <th>Won Rounds</th>
+            <th>Completed</th>
+          </>
+        ) : (
+          <>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Moves</th>
+            <th>Time (s)</th>
+          </>
+        )}
       </tr>
     </thead>
     <tbody>
@@ -719,8 +739,23 @@ useEffect(() => {
           <tr key={i} className={className}>
             <td>{i + 1}</td>
             <td>{entry.username}</td>
-            <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
-            <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
+            {leaderboardType === 'final' ? (
+              <>
+                <td>{entry.rounds_won} 🏆</td>
+                <td>
+                  {entry.won_rounds && entry.won_rounds.length > 0 ? 
+                    entry.won_rounds.map(round => `R${round}`).join(', ') : 
+                    '-'
+                  }
+                </td>
+                <td>{entry.rounds_completed}/5</td>
+              </>
+            ) : (
+              <>
+                <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
+                <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
+              </>
+            )}
           </tr>
         );
       })}
@@ -860,6 +895,7 @@ function AdminDashboard({
               <option value="all">All Time</option>
               <option value="weekly">This Week</option>
               <option value="tournament">Tournament</option>
+              <option value="final">Final Results</option>
             </select>
             
             <label>Tournament Mode:</label>

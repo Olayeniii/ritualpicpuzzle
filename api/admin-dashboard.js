@@ -66,12 +66,10 @@ export default async function handler(req, res) {
       const { action } = req.body;
       
       if (action === "start_tournament") {
-        const { startTime } = req.body;
-        const start = startTime ? new Date(startTime) : new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now if not specified
+        const { startTime, mode = 'manual', consumeScheduled = false } = req.body;
+        const start = startTime ? new Date(startTime) : null;
         
-        const tournament = await scheduleTournament(start, null);
-        // Immediately set to countdown status for manual tournaments
-        await updateTournamentStatus(tournament.id, "countdown");
+        const tournament = await scheduleTournament(start, null, mode, consumeScheduled);
         res.status(200).json({ success: true, tournament });
         
       } else if (action === "stop_tournament") {

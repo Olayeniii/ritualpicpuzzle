@@ -57,7 +57,8 @@ async function migrateDatabase() {
         created_by INTEGER NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        round_start_time TIMESTAMP NULL
+        round_start_time TIMESTAMP NULL,
+        mode VARCHAR(10) DEFAULT 'auto'
       );
     `);
     
@@ -65,6 +66,12 @@ async function migrateDatabase() {
     await pool.query(`
       ALTER TABLE tournament_schedule 
       ADD COLUMN IF NOT EXISTS round_start_time TIMESTAMP NULL;
+    `);
+    
+    // Add mode column if it doesn't exist (manual vs auto)
+    await pool.query(`
+      ALTER TABLE tournament_schedule
+      ADD COLUMN IF NOT EXISTS mode VARCHAR(10) DEFAULT 'auto';
     `);
     
     // Admin authentication now uses environment variables only
