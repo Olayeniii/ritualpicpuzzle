@@ -7,34 +7,38 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
-    const { username, moves, time, timeout = false, round = 1, tournamentId = null, roundId = null } = req.body;
+    const { username, moves, time, timeout = false, round = 1, tournamentId = null, roundId = null, forceNormal = false } = req.body;
 
     if (!username || moves == null || time == null) {
       return res.status(400).json({ error: "Invalid score submission" });
     }
 
     try {
-      // Determine tournament context if not provided by client
+      // Determine tournament context if not provided by client (skip when forceNormal)
       let tId = tournamentId;
       let rId = roundId;
       let roundNum = round;
 
-      if (!tId) {
-        // Check if a tournament is active
-        const tRes = await pool.query(
-          `SELECT id, current_round FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1`
-        );
-        if (tRes.rows.length > 0) {
-          tId = tRes.rows[0].id;
-          roundNum = tRes.rows[0].current_round || round;
-          // Find the active/defined round id
-          const rRes = await pool.query(
-            `SELECT id FROM rounds WHERE tournament_id = $1 AND round_number = $2 LIMIT 1`,
-            [tId, roundNum]
+      if (!forceNormal && !tId) {
+        try {
+          const tRes = await pool.query(
+            `SELECT id, current_round FROM tournaments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1`
           );
-          if (rRes.rows.length > 0) {
-            rId = rRes.rows[0].id;
+          if (tRes.rows.length > 0) {
+            tId = tRes.rows[0].id;
+            roundNum = tRes.rows[0].current_round || round;
+            const rRes = await pool.query(
+              `SELECT id FROM rounds WHERE tournament_id = $1 AND round_number = $2 LIMIT 1`,
+              [tId, roundNum]
+            );
+            if (rRes.rows.length > 0) {
+              rId = rRes.rows[0].id;
+            }
           }
+        } catch (e) {
+          // Ignore detection errors and fall back to normal insert
+          tId = null;
+          rId = null;
         }
       }
 
