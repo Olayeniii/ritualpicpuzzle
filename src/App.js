@@ -49,7 +49,8 @@ function App() {
       if (currentType === "weekly") {
         url += "?type=weekly";
       } else if (currentType === "latest") {
-        url += "?type=latest";
+        // Map UI "Today" to backend today endpoint (per-user best of today)
+        url += "?type=today";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
@@ -901,7 +902,7 @@ function AdminDashboard({
               onChange={(e) => setLeaderboardType(e.target.value)}
               className="admin-select"
             >
-              <option value="latest">Latest</option>
+              <option value="latest">Today</option>
               <option value="all">All Time</option>
               <option value="weekly">This Week</option>
               <option value="tournament">Tournament</option>
