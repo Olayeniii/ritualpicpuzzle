@@ -6,47 +6,50 @@ const pool = new Pool({
 });
 
 export default async function handler(req, res) {
-  const { round, mode = "single" } = req.query; // mode can be "single" or "combined"
+  const { round, mode = "single", tournamentId } = req.query;
 
-  if (!round) {
+  if (!tournamentId) {
+    return res.status(400).json({ error: "tournamentId required" });
+  }
+
+  if (!round && mode !== "combined") {
     return res.status(400).json({ error: "Round number required" });
   }
 
   try {
     let result;
-    
+
     if (mode === "combined") {
-      // For tournament mode: combine scores from all rounds, show all participants
+      // Combine by tournament id across all rounds
       result = await pool.query(
         `SELECT 
-          username,
-          SUM(moves) as total_moves,
-          SUM(time) as total_time,
-          COUNT(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN 1 END) as rounds_completed,
-          ARRAY_AGG(round ORDER BY round) as completed_rounds,
-          COUNT(CASE WHEN timeout = true OR time >= 300 THEN 1 END) as timeout_rounds
-         FROM leaderboard
-         WHERE round IN (1, 2, 3, 4, 5)
-         AND created_at >= date_trunc('week', now())
-         AND created_at < date_trunc('week', now()) + interval '7 days'
-         AND (timeout = false OR timeout IS NULL)
-         AND time < 300
-         GROUP BY username
-         ORDER BY rounds_completed DESC, total_moves ASC, total_time ASC`
+          l.username,
+          SUM(l.moves) AS total_moves,
+          SUM(l.time) AS total_time,
+          COUNT(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN 1 END) AS rounds_completed,
+          ARRAY_AGG(l.round ORDER BY l.round) AS completed_rounds,
+          COUNT(CASE WHEN l.timeout = true OR l.time >= 300 THEN 1 END) AS timeout_rounds
+         FROM leaderboard l
+         WHERE l.tournament_id = $1
+           AND (l.timeout = false OR l.timeout IS NULL)
+           AND l.time < 300
+         GROUP BY l.username
+         ORDER BY rounds_completed DESC, total_moves ASC, total_time ASC`,
+        [tournamentId]
       );
     } else {
-      // Single round leaderboard
+      // Single round by tournament id; join rounds to expose metadata if needed later
       result = await pool.query(
-        `SELECT username, moves, time, created_at
-         FROM leaderboard
-         WHERE (timeout = false OR timeout IS NULL)
-         AND time < 300
-         AND round = $1
-         AND created_at >= date_trunc('week', now())
-         AND created_at < date_trunc('week', now()) + interval '7 days'
-         ORDER BY moves ASC, time ASC
+        `SELECT l.username, l.moves, l.time, l.created_at, r.round_number
+         FROM leaderboard l
+         LEFT JOIN rounds r ON r.id = l.round_id
+         WHERE l.tournament_id = $1
+           AND l.round = $2
+           AND (l.timeout = false OR l.timeout IS NULL)
+           AND l.time < 300
+         ORDER BY l.moves ASC, l.time ASC
          LIMIT 10`,
-        [round]
+        [tournamentId, round]
       );
     }
 

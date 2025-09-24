@@ -1,6 +1,5 @@
 import { Pool } from "pg";
 import { verifyAdminSession } from "./admin-auth.js";
-import { getTournamentStatus, scheduleTournament, updateTournamentStatus } from "./tournament-scheduler.js";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,8 +20,32 @@ export default async function handler(req, res) {
       const { action } = req.query;
       
       if (action === "status") {
-        // Get tournament status and general stats
-        const tournamentStatus = await getTournamentStatus();
+        // Get current tournament status (prep/active/break) and general stats
+        const now = new Date();
+        const tRes = await pool.query(
+          `SELECT * FROM tournaments WHERE status IN ('prep','active','break') ORDER BY created_at DESC LIMIT 1`
+        );
+        let tournamentStatus = null;
+        if (tRes.rows.length > 0) {
+          const t = tRes.rows[0];
+          let countdownStart = new Date(t.created_at);
+          let startTime = new Date(countdownStart.getTime() + 5 * 60 * 1000);
+          if (t.mode === 'auto' && t.actual_start) {
+            startTime = new Date(t.actual_start);
+            countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
+          }
+          tournamentStatus = {
+            id: t.id,
+            mode: t.mode,
+            status: t.status,
+            currentRound: t.current_round || 0,
+            totalRounds: t.total_rounds,
+            countdownStart,
+            startTime,
+            timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
+            timeUntilStart: Math.max(0, startTime.getTime() - now.getTime()),
+          };
+        }
         
         const statsResult = await pool.query(`
           SELECT 
@@ -49,13 +72,14 @@ export default async function handler(req, res) {
         });
         
       } else if (action === "tournaments") {
-        // Get tournament history
+        // Get tournaments history with optional schedule link
         const result = await pool.query(`
-          SELECT * FROM tournament_schedule 
-          ORDER BY scheduled_start DESC 
-          LIMIT 20
+          SELECT t.*, ts.schedule_start 
+          FROM tournaments t
+          LEFT JOIN tournament_schedule ts ON ts.id = t.schedule_id
+          ORDER BY t.created_at DESC 
+          LIMIT 50
         `);
-        
         res.status(200).json(result.rows);
         
       } else {
@@ -66,45 +90,91 @@ export default async function handler(req, res) {
       const { action } = req.body;
       
       if (action === "start_tournament") {
-        const { startTime, mode = 'manual', consumeScheduled = false } = req.body;
-        const start = startTime ? new Date(startTime) : null;
-        
-        const tournament = await scheduleTournament(start, null, mode, consumeScheduled);
-        res.status(200).json({ success: true, tournament });
+        const { mode = 'manual', total_rounds = 5, schedule_id = null, created_by = null } = req.body;
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          const tRes = await client.query(
+            `INSERT INTO tournaments (schedule_id, mode, total_rounds, created_by, status, current_round, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             RETURNING *`,
+            [schedule_id, mode, total_rounds, created_by]
+          );
+          const t = tRes.rows[0];
+          const inserts = [];
+          for (let r = 1; r <= total_rounds; r += 1) {
+            inserts.push(
+              client.query(
+                `INSERT INTO rounds (tournament_id, round_number, status, created_at, updated_at)
+                 VALUES ($1, $2, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [t.id, r]
+              )
+            );
+          }
+          await Promise.all(inserts);
+          await client.query('COMMIT');
+          res.status(200).json({ success: true, tournament: t });
+        } catch (e) {
+          await client.query('ROLLBACK');
+          console.error('Admin start_tournament error:', e);
+          res.status(500).json({ success: false, error: 'Failed to start tournament' });
+        } finally {
+          client.release();
+        }
         
       } else if (action === "stop_tournament") {
         const { tournamentId } = req.body;
-        
-        if (!tournamentId) {
-          // Stop current active tournament
-          const status = await getTournamentStatus();
-          if (status && status.id) {
-            await updateTournamentStatus(status.id, 'stopped');
+        try {
+          // Prevent manual stop when auto unless override=true
+          const { override = false } = req.body;
+          let id = tournamentId;
+          if (!id) {
+            const tRes = await pool.query(`SELECT id FROM tournaments WHERE status='active' ORDER BY created_at DESC LIMIT 1`);
+            if (tRes.rows.length > 0) id = tRes.rows[0].id;
           }
-        } else {
-          await updateTournamentStatus(tournamentId, 'stopped');
+          if (!id) return res.status(400).json({ success: false, error: 'No active tournament' });
+          const mRes = await pool.query(`SELECT mode FROM tournaments WHERE id=$1`, [id]);
+          if (mRes.rows.length && mRes.rows[0].mode === 'auto' && !override) {
+            return res.status(409).json({ success: false, error: 'Cannot stop auto tournament without override' });
+          }
+          await pool.query(`UPDATE tournaments SET status='stopped', end_time=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [id]);
+          await pool.query(`UPDATE rounds SET status='completed', ended_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND status='active'`, [id]);
+          res.status(200).json({ success: true });
+        } catch (e) {
+          console.error('Admin stop_tournament error:', e);
+          res.status(500).json({ success: false, error: 'Failed to stop tournament' });
         }
         
-        res.status(200).json({ success: true });
-        
       } else if (action === "next_round") {
-        const status = await getTournamentStatus();
-        
-        if (status && status.id && status.currentRound < status.totalRounds) {
-          await updateTournamentStatus(status.id, 'active', status.currentRound + 1);
-          res.status(200).json({ success: true, newRound: status.currentRound + 1 });
-        } else {
-          res.status(400).json({ error: "No active tournament or max rounds reached" });
+        try {
+          const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='active' ORDER BY created_at DESC LIMIT 1`);
+          if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No active tournament' });
+          const t = tRes.rows[0];
+          if (t.mode === 'auto' && !req.body.override) return res.status(409).json({ success: false, error: 'Auto tournament; manual next requires override' });
+          if (t.current_round >= t.total_rounds) return res.status(400).json({ success: false, error: 'Max rounds reached' });
+          const curr = t.current_round || 1;
+          await pool.query(`UPDATE rounds SET status='completed', ended_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=$2`, [t.id, curr]);
+          const next = curr + 1;
+          await pool.query(`UPDATE rounds SET status='active', started_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=$2`, [t.id, next]);
+          await pool.query(`UPDATE tournaments SET current_round=$2, status='active', updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id, next]);
+          res.status(200).json({ success: true, newRound: next });
+        } catch (e) {
+          console.error('Admin next_round error:', e);
+          res.status(500).json({ success: false, error: 'Failed to advance round' });
         }
         
       } else if (action === "complete_tournament") {
-        const status = await getTournamentStatus();
-        
-        if (status && status.id) {
-          await updateTournamentStatus(status.id, 'completed');
+        try {
+          const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='active' ORDER BY created_at DESC LIMIT 1`);
+          if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No active tournament' });
+          const t = tRes.rows[0];
+          if (t.mode === 'auto' && !req.body.override) return res.status(409).json({ success: false, error: 'Auto tournament; manual complete requires override' });
+          await pool.query(`UPDATE rounds SET status='completed', ended_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND status='active'`, [t.id]);
+          await pool.query(`UPDATE tournaments SET status='completed', end_time=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id]);
           res.status(200).json({ success: true });
-        } else {
-          res.status(400).json({ error: "No active tournament" });
+        } catch (e) {
+          console.error('Admin complete_tournament error:', e);
+          res.status(500).json({ success: false, error: 'Failed to complete tournament' });
         }
         
       } else if (action === "cleanup_old_data") {
@@ -128,7 +198,6 @@ export default async function handler(req, res) {
         const { day, hour, minute } = req.body;
         
         // This would update the schedule in a config table or environment
-        // For now, we'll just return success and note this would need environment config
         res.status(200).json({ 
           success: true, 
           message: "Schedule updated (requires server restart to take effect)",

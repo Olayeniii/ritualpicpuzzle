@@ -12,7 +12,8 @@ const TOURNAMENT_CONFIG = {
   defaultMinute: 0,
   timezone: "UTC",
   countdownStartDay: 2, // Tuesday
-  countdownStartHour: 13, // 1 PM UTC (1 hour before tournament)
+  // Countdown begins Tuesday 11 PM Lagos (UTC+1) = 22:00 UTC
+  countdownStartHour: 22, // 22:00 UTC on Tuesday
   countdownStartMinute: 0,
   breakMinutes: 5,
   totalRounds: 5,
@@ -44,7 +45,7 @@ export function getNextTournamentTime(customSchedule = null) {
 }
 
 /**
- * Get the countdown start time (Tuesday 1 PM UTC)
+ * Get the countdown start time (Tuesday 11 PM UTC+1 = 22:00 UTC)
  */
 export function getCountdownStartTime(customSchedule = null) {
   const config = customSchedule || TOURNAMENT_CONFIG;
@@ -70,27 +71,18 @@ export async function getTournamentStatus() {
   try {
     // Check for active/scheduled tournaments in database
     const result = await pool.query(`
-      SELECT * FROM tournament_schedule 
-      WHERE status IN ('scheduled', 'countdown', 'active', 'break') 
-      ORDER BY scheduled_start DESC 
+      SELECT id, schedule_start FROM tournament_schedule
+      WHERE schedule_start >= NOW()
+      ORDER BY schedule_start ASC
       LIMIT 1
     `);
 
     const now = new Date();
 
     if (result.rows.length > 0) {
-      const tournament = result.rows[0];
-      let startTime = new Date(tournament.scheduled_start);
-      let countdownStart;
-
-      if (tournament.mode === 'manual') {
-        // Manual: countdown began at creation, startTime already set to now + 5m
-        countdownStart = new Date(tournament.created_at);
-        startTime = new Date(tournament.scheduled_start);
-      } else {
-        // Auto: 25h before weekly start
-        countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
-      }
+      const row = result.rows[0];
+      const startTime = new Date(row.schedule_start);
+      const countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
 
       // Calculate break time remaining if in break status
       let breakTimeRemaining = 0;
@@ -122,14 +114,6 @@ export async function getTournamentStatus() {
     let status = "scheduled";
     if (now >= countdownStart && now < nextTime) {
       status = "countdown";
-
-      // Auto-create tournament entry in database if we're in countdown
-      try {
-        const tournament = await scheduleTournament(nextTime, null);
-        await updateTournamentStatus(tournament.id, "countdown");
-      } catch (error) {
-        console.log("Tournament may already exist in database");
-      }
     }
 
     return {

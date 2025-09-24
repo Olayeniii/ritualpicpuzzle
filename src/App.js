@@ -47,7 +47,15 @@ function App() {
       if (currentType === "weekly") {
         url += "?type=weekly";
       } else if (currentType === "tournament") {
-        url = `/api/tournament?round=1&mode=combined`;
+        const ts = tournamentStatusRef.current;
+        const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
+        // During an active round, show the per-round leaderboard; otherwise show combined
+        if (ts && ts.status === 'active') {
+          const round = ts.currentRound || 1;
+          url = `/api/tournament?round=${round}&mode=single${tid}`;
+        } else {
+          url = `/api/tournament?round=1&mode=combined${tid}`;
+        }
       } else if (currentType === "final") {
         url = `/api/tournament-final`;
       }
@@ -172,14 +180,9 @@ const fetchTournamentStatus = useCallback(async () => {
     
     switch (tournamentStatus.status) {
       case 'countdown':
-        // Manual countdown shows tournament UI; auto shows weekly
-        if (tournamentStatus.mode === 'manual') {
-          setTournamentMode(true);
-          setLeaderboardType('tournament');
-        } else {
-          setTournamentMode(false);
-          setLeaderboardType('weekly');
-        }
+        // During any countdown, keep weekly leaderboard to avoid empty tournament table
+        setTournamentMode(false);
+        setLeaderboardType('weekly');
         break;
         
       case 'active':
@@ -231,6 +234,8 @@ const fetchTournamentStatus = useCallback(async () => {
 const submitScore = useCallback(
     async (timeout = false) => {
       try {
+        const ts = tournamentStatusRef.current;
+        const tournamentId = ts && ts.id ? ts.id : null;
         await fetch("/api/submit-score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -239,7 +244,8 @@ const submitScore = useCallback(
             moves, 
             time: timer, 
             timeout,
-            round: tournamentMode ? currentRound : 1
+            round: tournamentMode ? currentRound : 1,
+            tournamentId
           }),
         });
         
@@ -514,8 +520,8 @@ useEffect(() => {
           </div>
           <h1 className="title">Ritual Puzzle</h1>
           
-          {/* Admin Settings Button - only visible when admin is logged in */}
-          {adminAuth && (
+          {/* Admin Settings Button: hidden on landing; shown only in-game */}
+          {false && adminAuth && (
             <button 
               className="admin-settings-btn"
               onClick={() => setShowAdminPanel(true)}

@@ -7,13 +7,41 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
-    const { type = "all" } = req.query; // "all", "weekly"
+    const { type = "all", tournamentId = null, roundId = null, mode = null } = req.query; // adds tournament filters
     
     try {
       let query;
       let params = [];
       
-      if (type === "weekly") {
+      // Tournament-scoped leaderboard
+      if (tournamentId) {
+        if (mode === 'single' && roundId) {
+          query = `
+            SELECT l.username, l.moves, l.time, l.created_at
+            FROM leaderboard l
+            WHERE l.tournament_id = $1 AND l.round_id = $2
+              AND (l.timeout = false OR l.timeout IS NULL)
+              AND l.time < 300
+            ORDER BY l.moves ASC, l.time ASC
+            LIMIT 10`;
+          params = [tournamentId, roundId];
+        } else {
+          query = `
+            SELECT l.username,
+                   SUM(l.moves) AS total_moves,
+                   SUM(l.time) AS total_time,
+                   COUNT(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN 1 END) AS rounds_completed,
+                   ARRAY_AGG(l.round ORDER BY l.round) AS completed_rounds,
+                   COUNT(CASE WHEN l.timeout = true OR l.time >= 300 THEN 1 END) AS timeout_rounds
+            FROM leaderboard l
+            WHERE l.tournament_id = $1
+              AND (l.timeout = false OR l.timeout IS NULL)
+              AND l.time < 300
+            GROUP BY l.username
+            ORDER BY rounds_completed DESC, total_moves ASC, total_time ASC`;
+          params = [tournamentId];
+        }
+      } else if (type === "weekly") {
         query = `
           SELECT username, moves, time, created_at
           FROM leaderboard l1
