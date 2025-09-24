@@ -50,7 +50,7 @@ function App() {
         url += "?type=weekly";
       } else if (currentType === "latest") {
         // Map UI "Today" to backend today endpoint (per-user best of today)
-        url += "?type=today";
+        url += "?type=latest";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
