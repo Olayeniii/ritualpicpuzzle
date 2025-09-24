@@ -176,6 +176,56 @@ export default async function handler(req, res) {
           console.error('Admin complete_tournament error:', e);
           res.status(500).json({ success: false, error: 'Failed to complete tournament' });
         }
+
+      } else if (action === "scheduler_tick") {
+        // Folded from /api/scheduler-tick: create tournaments for due schedule_start
+        const totalRounds = 5;
+        try {
+          const dueRes = await pool.query(
+            `SELECT s.id, s.schedule_start
+             FROM tournament_schedule s
+             LEFT JOIN tournaments t ON t.schedule_id = s.id
+             WHERE t.id IS NULL AND s.schedule_start <= NOW()
+             ORDER BY s.schedule_start ASC
+             LIMIT 10`
+          );
+          const created = [];
+          for (const row of dueRes.rows) {
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              const tRes = await client.query(
+                `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_at, updated_at)
+                 VALUES ($1, 'auto', $2, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                 RETURNING *`,
+                [row.id, totalRounds]
+              );
+              const t = tRes.rows[0];
+              const inserts = [];
+              for (let r = 1; r <= totalRounds; r += 1) {
+                inserts.push(
+                  client.query(
+                    `INSERT INTO rounds (tournament_id, round_number, status, created_at, updated_at)
+                     VALUES ($1, $2, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                    [t.id, r]
+                  )
+                );
+              }
+              await Promise.all(inserts);
+              await client.query('COMMIT');
+              created.push({ id: t.id, schedule_id: row.id, schedule_start: row.schedule_start });
+            } catch (e) {
+              await client.query('ROLLBACK');
+              console.error('scheduler_tick (admin) create error:', e);
+            } finally {
+              client.release();
+            }
+          }
+          return res.status(200).json({ success: true, created: created.length, tournaments: created });
+        } catch (e) {
+          console.error('Admin scheduler_tick error:', e);
+          return res.status(500).json({ success: false, error: 'Scheduler tick failed' });
+        }
         
       } else if (action === "cleanup_old_data") {
         const { daysOld = 90 } = req.body;
