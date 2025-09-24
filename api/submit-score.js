@@ -7,7 +7,7 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
-    const { username, moves, time, timeout = false, round = 1 } = req.body;
+    const { username, moves, time, timeout = false } = req.body;
 
     if (!username || moves == null || time == null) {
       return res.status(400).json({ error: "Invalid score submission" });
@@ -15,8 +15,8 @@ export default async function handler(req, res) {
 
     try {
       await pool.query(
-        "INSERT INTO leaderboard (username, moves, time, timeout, round, tournament_id, round_id, created_at) VALUES ($1, $2, $3, $4, $5, NULL, NULL, CURRENT_TIMESTAMP)",
-        [username, moves, time, timeout, round]
+        "INSERT INTO leaderboard (username, moves, time, timeout, tournament_id, round_id, created_at) VALUES ($1, $2, $3, $4, NULL, NULL, CURRENT_TIMESTAMP)",
+        [username, moves, time, timeout]
       );
       res.status(200).json({ message: "Score submitted" });
     } catch (err) {
