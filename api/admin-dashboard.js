@@ -94,11 +94,12 @@ export default async function handler(req, res) {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
+          // Robust insert: omit created_by to avoid NOT NULL constraint issues
           const tRes = await client.query(
-            `INSERT INTO tournaments (schedule_id, mode, total_rounds, created_by, status, current_round, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_at, updated_at)
+             VALUES ($1, $2, $3, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
              RETURNING *`,
-            [schedule_id, mode, total_rounds, created_by]
+            [schedule_id, mode, total_rounds]
           );
           const t = tRes.rows[0];
           const inserts = [];
@@ -182,11 +183,11 @@ export default async function handler(req, res) {
         const totalRounds = 5;
         try {
           const dueRes = await pool.query(
-            `SELECT s.id, s.schedule_start
+            `SELECT s.id, s.scheduled_start
              FROM tournament_schedule s
              LEFT JOIN tournaments t ON t.schedule_id = s.id
-             WHERE t.id IS NULL AND s.schedule_start <= NOW()
-             ORDER BY s.schedule_start ASC
+             WHERE t.id IS NULL AND s.scheduled_start <= NOW()
+             ORDER BY s.scheduled_start ASC
              LIMIT 10`
           );
           const created = [];
@@ -213,7 +214,7 @@ export default async function handler(req, res) {
               }
               await Promise.all(inserts);
               await client.query('COMMIT');
-              created.push({ id: t.id, schedule_id: row.id, schedule_start: row.schedule_start });
+              created.push({ id: t.id, schedule_id: row.id, scheduled_start: row.scheduled_start });
             } catch (e) {
               await client.query('ROLLBACK');
               console.error('scheduler_tick (admin) create error:', e);

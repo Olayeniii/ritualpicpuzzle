@@ -19,7 +19,7 @@ function App() {
   const [gameOver, setGameOver] = useState(false);
   const [achievements, setAchievements] = useState([]);
   const [currentRound, setCurrentRound] = useState(1);
-  const [leaderboardType, setLeaderboardType] = useState("all"); // automatically set based on tournament status
+  const [leaderboardType, setLeaderboardType] = useState("today"); // default to today's normal leaderboard
   const [tournamentMode, setTournamentMode] = useState(false); // automatically set based on tournament status
   const [tournamentStatus, setTournamentStatus] = useState(null);
   const [countdown, setCountdown] = useState(null);
