@@ -98,7 +98,7 @@ const fetchTournamentStatus = useCallback(async () => {
     }
   }, [fetchLeaderboard, fetchTournamentStatus, gameStarted, showAdminPanel]);
   
-  // Smart tournament checking - minimal polling approach (only after interaction)
+  // Smart tournament checking - ultra-minimal polling (only after interaction)
   useEffect(() => {
     let statusInterval;
     
@@ -106,7 +106,7 @@ const fetchTournamentStatus = useCallback(async () => {
     if ((gameStarted || showAdminPanel) && tournamentStatus && ['active', 'break'].includes(tournamentStatus.status)) {
       statusInterval = setInterval(() => {
         fetchTournamentStatus();
-      }, 120000); // Every 2 minutes during active tournament
+      }, 300000); // Every 5 minutes during active/break
     }
     
     return () => {
@@ -114,21 +114,18 @@ const fetchTournamentStatus = useCallback(async () => {
     };
   }, [tournamentStatus, fetchTournamentStatus, gameStarted, showAdminPanel]);
   
-  // Separate effect for countdown polling - only during final 5 minutes (after interaction)
+  // Separate effect for countdown polling - only during final 60s (after interaction)
   useEffect(() => {
     let countdownPolling;
     
-    // Only poll during the final 5 minutes of countdown (both manual and automatic)
+    // Only poll during the final 60 seconds of countdown
     if ((gameStarted || showAdminPanel) && tournamentStatus?.status === 'countdown' && countdown > 0) {
-      const countdownMinutes = Math.floor(countdown / 60);
-      
-      if (countdownMinutes <= 5) {
-        const pollInterval = countdownMinutes <= 1 ? 5000 : 10000; // Every 5 seconds in final minute, every 10 seconds in final 5 minutes
+      if (countdown <= 60) {
+        const pollInterval = 10000; // Every 10 seconds in final minute
         countdownPolling = setInterval(() => {
           fetchTournamentStatus();
         }, pollInterval);
       }
-      // No polling for longer countdowns - let normal refresh handle it
     }
     
     return () => {
