@@ -23,6 +23,39 @@ export default async function handler(req, res) {
           ORDER BY created_at DESC, id DESC
           LIMIT 50
         `;
+      } else if (type === "today") {
+        // Today-only per-user best; if none today, fall back to recent valid entries
+        query = `
+          WITH best_today AS (
+            SELECT DISTINCT ON (username)
+              username, moves, time, created_at
+            FROM leaderboard
+            WHERE (timeout = false OR timeout IS NULL)
+              AND time > 0 AND time < 300
+              AND created_at >= date_trunc('day', now())
+              AND created_at < date_trunc('day', now()) + interval '1 day'
+            ORDER BY username, moves ASC, time ASC, created_at DESC
+          ),
+          today_count AS (
+            SELECT COUNT(*) AS n FROM best_today
+          ),
+          fallback_recent AS (
+            SELECT username, moves, time, created_at
+            FROM leaderboard
+            WHERE (timeout = false OR timeout IS NULL)
+              AND time > 0 AND time < 300
+            ORDER BY created_at DESC, id DESC
+            LIMIT 50
+          )
+          SELECT username, moves, time, created_at
+          FROM best_today
+          WHERE (SELECT n FROM today_count) > 0
+          UNION ALL
+          SELECT username, moves, time, created_at
+          FROM fallback_recent
+          WHERE (SELECT n FROM today_count) = 0
+          ORDER BY moves ASC, time ASC, created_at DESC
+        `;
       } else if (type === "weekly") {
         query = `
           SELECT username, moves, time, created_at
