@@ -14,21 +14,14 @@ export default async function handler(req, res) {
       let params = [];
       
       if (type === "latest") {
-        // Today-only, per-user best: lowest moves, then lowest time, then latest entry
-        // Exclude timeouts and zero/invalid times
+        // Recent valid entries, most recent first (no per-user aggregation)
         query = `
           SELECT username, moves, time, created_at
-          FROM (
-            SELECT DISTINCT ON (username)
-              username, moves, time, created_at
-            FROM leaderboard
-            WHERE (timeout = false OR timeout IS NULL)
-              AND time > 0 AND time < 300
-              AND created_at >= date_trunc('day', now())
-              AND created_at < date_trunc('day', now()) + interval '1 day'
-            ORDER BY username, moves ASC, time ASC, created_at DESC
-          ) AS best_today
-          ORDER BY moves ASC, time ASC
+          FROM leaderboard
+          WHERE (timeout = false OR timeout IS NULL)
+            AND time > 0 AND time < 300
+          ORDER BY created_at DESC, id DESC
+          LIMIT 50
         `;
       } else if (type === "weekly") {
         query = `
