@@ -90,18 +90,20 @@ const fetchTournamentStatus = useCallback(async () => {
   }
 }, []); // No dependencies - stable function
 
-  // Initial fetch on mount only
+  // Initial fetch on mount; status only after interaction (game or admin panel)
   useEffect(() => {
     fetchLeaderboard();
-    fetchTournamentStatus();
-  }, [fetchLeaderboard, fetchTournamentStatus]); // Include dependencies
+    if (gameStarted || showAdminPanel) {
+      fetchTournamentStatus();
+    }
+  }, [fetchLeaderboard, fetchTournamentStatus, gameStarted, showAdminPanel]);
   
-  // Smart tournament checking - minimal polling approach
+  // Smart tournament checking - minimal polling approach (only after interaction)
   useEffect(() => {
     let statusInterval;
     
     // Only start polling for active tournaments and breaks
-    if (tournamentStatus && ['active', 'break'].includes(tournamentStatus.status)) {
+    if ((gameStarted || showAdminPanel) && tournamentStatus && ['active', 'break'].includes(tournamentStatus.status)) {
       statusInterval = setInterval(() => {
         fetchTournamentStatus();
       }, 120000); // Every 2 minutes during active tournament
@@ -110,14 +112,14 @@ const fetchTournamentStatus = useCallback(async () => {
     return () => {
       if (statusInterval) clearInterval(statusInterval);
     };
-  }, [tournamentStatus, fetchTournamentStatus]);
+  }, [tournamentStatus, fetchTournamentStatus, gameStarted, showAdminPanel]);
   
-  // Separate effect for countdown polling - only during final 5 minutes
+  // Separate effect for countdown polling - only during final 5 minutes (after interaction)
   useEffect(() => {
     let countdownPolling;
     
     // Only poll during the final 5 minutes of countdown (both manual and automatic)
-    if (tournamentStatus?.status === 'countdown' && countdown > 0) {
+    if ((gameStarted || showAdminPanel) && tournamentStatus?.status === 'countdown' && countdown > 0) {
       const countdownMinutes = Math.floor(countdown / 60);
       
       if (countdownMinutes <= 5) {
@@ -132,7 +134,7 @@ const fetchTournamentStatus = useCallback(async () => {
     return () => {
       if (countdownPolling) clearInterval(countdownPolling);
     };
-  }, [tournamentStatus?.status, countdown, fetchTournamentStatus]);
+  }, [tournamentStatus?.status, countdown, fetchTournamentStatus, gameStarted, showAdminPanel]);
   
   // Fetch leaderboard when type changes
   useEffect(() => {

@@ -55,9 +55,9 @@ export default async function handler(req, res) {
       }
 
       // No live tournament: expose next scheduled countdown from tournament_schedule
-      const sRes = await pool.query(`SELECT schedule_start FROM tournament_schedule WHERE schedule_start >= NOW() ORDER BY schedule_start ASC LIMIT 1`);
+      const sRes = await pool.query(`SELECT scheduled_start FROM tournament_schedule WHERE scheduled_start >= NOW() ORDER BY scheduled_start ASC LIMIT 1`);
       if (sRes.rows.length > 0) {
-        const startTime = new Date(sRes.rows[0].schedule_start);
+        const startTime = new Date(sRes.rows[0].scheduled_start);
         const countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
         return res.status(200).json({
           status: now >= countdownStart && now < startTime ? 'countdown' : 'scheduled',
