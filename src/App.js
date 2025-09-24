@@ -19,7 +19,7 @@ function App() {
   const [gameOver, setGameOver] = useState(false);
   const [achievements, setAchievements] = useState([]);
   const [currentRound, setCurrentRound] = useState(1);
-  const [leaderboardType, setLeaderboardType] = useState("today"); // default to today's normal leaderboard
+  const [leaderboardType, setLeaderboardType] = useState("latest"); // default to latest entries leaderboard
   const [tournamentMode, setTournamentMode] = useState(false); // automatically set based on tournament status
   const [tournamentStatus, setTournamentStatus] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -48,8 +48,8 @@ function App() {
       
       if (currentType === "weekly") {
         url += "?type=weekly";
-      } else if (currentType === "today") {
-        url += "?type=today";
+      } else if (currentType === "latest") {
+        url += "?type=latest";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
@@ -178,7 +178,7 @@ const fetchTournamentStatus = useCallback(async () => {
   useEffect(() => {
     if (!tournamentStatus || showAdminPanel) return;
     // Do not override if operator explicitly set "today"
-    if (leaderboardType === 'today') return;
+    if (leaderboardType === 'latest') return;
     
     switch (tournamentStatus.status) {
       case 'countdown':
@@ -705,7 +705,7 @@ useEffect(() => {
   <div className="leaderboard-header">
     <h2>
       {leaderboardType === 'tournament' ? '🏆 Tournament Leaderboard' : 
-       leaderboardType === 'today' ? '📅 Today' : 
+       leaderboardType === 'latest' ? '🆕 Latest' : 
        leaderboardType === 'weekly' ? '📅 This Week' : 
        leaderboardType === 'final' ? '🏅 Final Tournament Results' : 
        '🏅 All Time Leaderboard'}
@@ -901,7 +901,7 @@ function AdminDashboard({
               onChange={(e) => setLeaderboardType(e.target.value)}
               className="admin-select"
             >
-              <option value="today">Today</option>
+              <option value="latest">Latest</option>
               <option value="all">All Time</option>
               <option value="weekly">This Week</option>
               <option value="tournament">Tournament</option>
