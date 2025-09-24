@@ -705,7 +705,7 @@ useEffect(() => {
   <div className="leaderboard-header">
     <h2>
       {leaderboardType === 'tournament' ? '🏆 Tournament Leaderboard' : 
-       leaderboardType === 'latest' ? '🆕 Latest' : 
+       leaderboardType === 'latest' ? '🆕 Today' : 
        leaderboardType === 'weekly' ? '📅 This Week' : 
        leaderboardType === 'final' ? '🏅 Final Tournament Results' : 
        '🏅 All Time Leaderboard'}
