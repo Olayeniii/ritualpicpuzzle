@@ -1,5 +1,4 @@
 import { Pool } from "pg";
-import { broadcast } from "./_events.js";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -31,7 +30,7 @@ export default async function handler(req, res) {
           await pool.query(`UPDATE rounds SET status='active', started_at=COALESCE(started_at, CURRENT_TIMESTAMP) WHERE tournament_id=$1 AND round_number=1`, [t.id]);
           t.status = 'active';
           t.current_round = 1;
-          broadcast('tournament_status', { id: t.id, status: 'active', currentRound: 1 });
+          // Notification hook (SSE/Webhook) can be added here if needed
         }
 
         // Determine current round id
