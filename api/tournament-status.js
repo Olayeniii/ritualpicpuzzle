@@ -19,9 +19,9 @@ export default async function handler(req, res) {
         const t = tRes.rows[0];
         let countdownStart = new Date(t.created_at);
         let startTime = new Date(countdownStart.getTime() + 5 * 60 * 1000);
-        if (t.mode === 'auto' && t.scheduled_id) {
+        if (t.mode === 'auto' && t.schedule_id) {
           // For auto tournaments, derive from tournament_schedule.scheduled_start
-          const sRes2 = await pool.query(`SELECT scheduled_start FROM tournament_schedule WHERE id = $1 LIMIT 1`, [t.scheduled_id]);
+          const sRes2 = await pool.query(`SELECT scheduled_start FROM tournament_schedule WHERE id = $1 LIMIT 1`, [t.schedule_id]);
           if (sRes2.rows.length > 0) {
             startTime = new Date(sRes2.rows[0].scheduled_start);
             countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
