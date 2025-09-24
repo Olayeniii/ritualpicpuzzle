@@ -46,6 +46,8 @@ function App() {
       
       if (currentType === "weekly") {
         url += "?type=weekly";
+      } else if (currentType === "today") {
+        url += "?type=today";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
@@ -96,7 +98,7 @@ const fetchTournamentStatus = useCallback(async () => {
     if (gameStarted || showAdminPanel) {
       fetchTournamentStatus();
     }
-  }, [fetchLeaderboard, fetchTournamentStatus, gameStarted, showAdminPanel]);
+  }, [fetchLeaderboard, fetchTournamentStatus, gameStarted, showAdminPanel, leaderboardType]);
   
   // Smart tournament checking - ultra-minimal polling (only after interaction)
   useEffect(() => {
@@ -176,6 +178,8 @@ const fetchTournamentStatus = useCallback(async () => {
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
     if (!tournamentStatus || showAdminPanel) return;
+    // Do not override if operator explicitly set "today"
+    if (leaderboardType === 'today') return;
     
     switch (tournamentStatus.status) {
       case 'countdown':
@@ -210,7 +214,7 @@ const fetchTournamentStatus = useCallback(async () => {
         setLeaderboardType('all');
         break;
     }
-  }, [tournamentStatus, showAdminPanel]);
+  }, [tournamentStatus, showAdminPanel, leaderboardType]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
@@ -702,6 +706,7 @@ useEffect(() => {
   <div className="leaderboard-header">
     <h2>
       {leaderboardType === 'tournament' ? '🏆 Tournament Leaderboard' : 
+       leaderboardType === 'today' ? '📅 Today' : 
        leaderboardType === 'weekly' ? '📅 This Week' : 
        leaderboardType === 'final' ? '🏅 Final Tournament Results' : 
        '🏅 All Time Leaderboard'}
@@ -897,6 +902,7 @@ function AdminDashboard({
               onChange={(e) => setLeaderboardType(e.target.value)}
               className="admin-select"
             >
+              <option value="today">Today</option>
               <option value="all">All Time</option>
               <option value="weekly">This Week</option>
               <option value="tournament">Tournament</option>
