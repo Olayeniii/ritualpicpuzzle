@@ -32,6 +32,8 @@ function App() {
   // Use refs to track current values to avoid dependency issues
   const leaderboardTypeRef = useRef(leaderboardType);
   const tournamentStatusRef = useRef(tournamentStatus);
+  const statusFetchInFlightRef = useRef(false);
+  const lastStatusFetchAtRef = useRef(0);
   const countdownRef = useRef(countdown);
   
   leaderboardTypeRef.current = leaderboardType;
@@ -77,20 +79,27 @@ function App() {
 
 // fetch tournament status - stable function
 const fetchTournamentStatus = useCallback(async () => {
+  const now = Date.now();
+  // Throttle and de-dupe: max 1 request / 10s
+  if (statusFetchInFlightRef.current) return;
+  if (now - lastStatusFetchAtRef.current < 10000) return;
+  statusFetchInFlightRef.current = true;
   try {
     const res = await fetch("/api/tournament-status");
     if (!res.ok) {
       console.error("Tournament status API error:", res.status, res.statusText);
-      return; // Don't update state on error
+      return;
     }
     const data = await res.json();
     setTournamentStatus(data);
   } catch (err) {
     console.error("Failed to fetch tournament status:", err);
-    // Set a default state to prevent infinite retries
     setTournamentStatus(null);
+  } finally {
+    lastStatusFetchAtRef.current = Date.now();
+    statusFetchInFlightRef.current = false;
   }
-}, []); // No dependencies - stable function
+}, []);
 
   // Initial fetch on mount; status only after interaction (game or admin panel)
   useEffect(() => {
@@ -140,40 +149,30 @@ const fetchTournamentStatus = useCallback(async () => {
     fetchLeaderboard();
   }, [leaderboardType, fetchLeaderboard]);
   
-  // Tournament countdown effect - calculate time dynamically
+  // Tournament countdown effect - compute locally, low frequency
   useEffect(() => {
-    if (!tournamentStatus) return;
-    
-    const updateCountdown = () => {
+    // Only compute after interaction and only during countdown
+    if (!(gameStarted || showAdminPanel)) { setCountdown(null); return; }
+    if (tournamentStatus?.status !== 'countdown') { setCountdown(null); return; }
+
+    const compute = () => {
       const now = new Date();
-      let timeLeft = 0;
-      
-      if (tournamentStatus.status === 'scheduled' && tournamentStatus.countdownStart) {
-        // Time until countdown starts
-        timeLeft = new Date(tournamentStatus.countdownStart) - now;
-      } else if (tournamentStatus.status === 'countdown' && (tournamentStatus.startTime || tournamentStatus.scheduled_start)) {
-        // Time until tournament starts
-        const startTime = tournamentStatus.startTime || tournamentStatus.scheduled_start;
-        timeLeft = new Date(startTime) - now;
-      }
-      
+      const startTime = tournamentStatus.startTime || tournamentStatus.scheduled_start;
+      if (!startTime) { setCountdown(null); return; }
+      const timeLeft = new Date(startTime) - now;
       if (timeLeft > 0) {
         setCountdown(Math.ceil(timeLeft / 1000));
       } else {
         setCountdown(null);
-        // Immediately check tournament status when countdown reaches zero
         fetchTournamentStatus();
       }
     };
-    
-    // Update immediately
-    updateCountdown();
-    
-    // Update every second for smooth countdown
-    const countdownInterval = setInterval(updateCountdown, 1000);
-    
-    return () => clearInterval(countdownInterval);
-  }, [tournamentStatus, fetchTournamentStatus]); 
+
+    compute();
+    // Light cadence: every 15s; final minute handled by separate effect
+    const id = setInterval(compute, 15000);
+    return () => clearInterval(id);
+  }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, gameStarted, showAdminPanel, fetchTournamentStatus]);
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
