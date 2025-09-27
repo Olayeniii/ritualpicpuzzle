@@ -450,6 +450,25 @@ useEffect(() => {
     return tiles.every((tile, index) => tile === index);
   };
 
+  // Build a compact pagination list like: 1 2 3 … N or 1 … P-1 P P+1 … N
+  const getPageList = (totalPages, page) => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i += 1) pages.push(i);
+      return pages;
+    }
+    if (page <= 3) {
+      pages.push(1, 2, 3, '…', totalPages);
+      return pages;
+    }
+    if (page >= totalPages - 2) {
+      pages.push(1, '…', totalPages - 2, totalPages - 1, totalPages);
+      return pages;
+    }
+    pages.push(1, '…', page - 1, page, page + 1, '…', totalPages);
+    return pages;
+  };
+
   // Calculate puzzle completion progress
   const getProgress = () => {
     if (tiles.length === 0) return 0;
@@ -782,20 +801,36 @@ useEffect(() => {
       })()}
     </tbody>
   </table>
-  <div className="pagination" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-    <button 
-      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-      disabled={currentPage <= 1}
-    >
-      ◀ Previous
-    </button>
-    <span>Page {currentPage} of {Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE))}</span>
-    <button 
-      onClick={() => setCurrentPage(p => Math.min(Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE)), p + 1))}
-      disabled={currentPage >= Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE))}
-    >
-      Next ▶
-    </button>
+  <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+    {(() => {
+      const totalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));
+      const items = getPageList(totalPages, currentPage);
+      return items.map((item, idx) => {
+        if (item === '…') {
+          return <span key={`e-${idx}`} style={{ padding: '4px 8px', color: '#aaa' }}>…</span>;
+        }
+        const n = item;
+        const isActive = n === currentPage;
+        return (
+          <button
+            key={`p-${n}`}
+            onClick={() => setCurrentPage(n)}
+            disabled={isActive}
+            className={`page-btn ${isActive ? 'active' : ''}`}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '4px',
+              border: '1px solid #444',
+              background: isActive ? '#555' : '#222',
+              color: '#fff',
+              cursor: isActive ? 'default' : 'pointer'
+            }}
+          >
+            {n}
+          </button>
+        );
+      });
+    })()}
   </div>
 </aside>
 
@@ -897,7 +932,8 @@ function AdminDashboard({
             onClick={() => apiCall("/api/admin-dashboard", { 
               action: "start_tournament",
               mode: 'manual',
-              total_rounds: 5
+              total_rounds: 5,
+              adminUsername: adminAuth?.user?.username || 'ritual-admin'
             })}
             disabled={loading || ['active', 'prep', 'break'].includes(tournamentStatus?.status)}
           >

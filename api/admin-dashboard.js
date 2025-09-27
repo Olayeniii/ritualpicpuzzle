@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (!isAdmin) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const adminUsername = process.env.ADMIN_USERNAME || 'ritual-admin';
+  let adminUsername = process.env.ADMIN_USERNAME || 'ritual-admin';
   
   try {
     if (req.method === "GET") {
@@ -88,7 +88,10 @@ export default async function handler(req, res) {
       }
       
     } else if (req.method === "POST") {
-      const { action } = req.body;
+      const { action, adminUsername: bodyAdminUsername } = req.body;
+      if (bodyAdminUsername) {
+        adminUsername = bodyAdminUsername;
+      }
       
       if (action === "start_tournament") {
         const { mode = 'manual', total_rounds = 5, schedule_id = null } = req.body;
@@ -118,7 +121,13 @@ export default async function handler(req, res) {
         } catch (e) {
           await client.query('ROLLBACK');
           console.error('Admin start_tournament error:', e);
-          res.status(500).json({ success: false, error: 'Failed to start tournament' });
+          console.error('Error details:', {
+            message: e.message,
+            code: e.code,
+            detail: e.detail,
+            constraint: e.constraint
+          });
+          res.status(500).json({ success: false, error: 'Failed to start tournament: ' + (e.message || 'unknown error') });
         } finally {
           client.release();
         }
