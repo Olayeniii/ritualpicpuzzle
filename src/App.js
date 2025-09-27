@@ -30,6 +30,7 @@ function App() {
   const [logoLongPressTimer, setLogoLongPressTimer] = useState(null);
   const PAGE_SIZE = 20;
   const [currentPage, setCurrentPage] = useState(1);
+  const [toasts, setToasts] = useState([]);
 
   // Use refs to track current values to avoid dependency issues
   const leaderboardTypeRef = useRef(leaderboardType);
@@ -308,7 +309,7 @@ const formatCountdown = (seconds) => {
 // admin login with environment validation
 const handleAdminLogin = async () => {
   if (!username || !adminKey) {
-    alert("Please enter both username and admin key");
+    showToast("Please enter both username and admin key", 'warning');
     return false;
   }
   
@@ -329,14 +330,15 @@ const handleAdminLogin = async () => {
       setShowAdminPanel(true);
       setShowAdminKey(false);
       setAdminKey("");
+      showToast("Admin login successful", 'success');
       return true;
     } else {
-      alert("Invalid admin credentials");
+      showToast("Invalid admin credentials", 'error');
       return false;
     }
   } catch (err) {
     console.error("Admin login failed:", err);
-    alert("Login failed");
+    showToast("Login failed", 'error');
     return false;
   }
 };
@@ -468,6 +470,15 @@ useEffect(() => {
     pages.push(1, '…', page - 1, page, page + 1, '…', totalPages);
     return pages;
   };
+
+  // Toast helpers
+  const showToast = useCallback((message, type = 'info', durationMs = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter(t => t.id !== id));
+    }, durationMs);
+  }, []);
 
   // Calculate puzzle completion progress
   const getProgress = () => {
@@ -610,6 +621,12 @@ useEffect(() => {
 
   return (
     <div className="app">
+      {/* Toasts */}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.type}`}>{t.message}</div>
+        ))}
+      </div>
       <header className="site-header">
         <div 
           className="logo admin-trigger"
@@ -855,6 +872,7 @@ useEffect(() => {
               setTournamentMode={setTournamentMode}
               currentRound={currentRound}
               setCurrentRound={setCurrentRound}
+              showToast={showToast}
             />
           </div>
         </div>
@@ -886,7 +904,8 @@ function AdminDashboard({
   tournamentMode,
   setTournamentMode,
   currentRound,
-  setCurrentRound
+  setCurrentRound,
+  showToast
 }) {
   const [loading, setLoading] = useState(false);
   
@@ -904,13 +923,13 @@ function AdminDashboard({
       
       const result = await res.json();
       if (result.success) {
-        alert("Operation successful!");
+        showToast("Operation successful!", 'success');
         onRefresh();
       } else {
-        alert(result.error || "Operation failed");
+        showToast(result.error || "Operation failed", 'error');
       }
     } catch (err) {
-      alert("Operation failed: " + err.message);
+      showToast("Operation failed: " + err.message, 'error');
     } finally {
       setLoading(false);
     }
