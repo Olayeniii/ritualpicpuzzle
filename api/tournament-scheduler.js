@@ -69,7 +69,7 @@ export function getCountdownStartTime(customSchedule = null) {
  */
 export async function getTournamentStatus() {
   try {
-    // Check for active/scheduled tournaments in database
+    // function 
     const result = await pool.query(`
       SELECT id, schedule_start FROM tournament_schedule
       WHERE schedule_start >= NOW()
@@ -84,63 +84,42 @@ export async function getTournamentStatus() {
       const startTime = new Date(row.schedule_start);
       const countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
 
-      // Calculate break time remaining if in break status
-      let breakTimeRemaining = 0;
-      if (tournament.status === 'break') {
-        const breakStartTime = new Date(tournament.updated_at);
-        const breakDurationMs = TOURNAMENT_CONFIG.breakMinutes * 60 * 1000;
-        breakTimeRemaining = Math.max(0, breakDurationMs - (now.getTime() - breakStartTime.getTime()));
-      }
-
       return {
-        ...tournament,
-        startTime,
-        countdownStart,
-        timeUntilCountdown: Math.max(
-          0,
-          countdownStart.getTime() - now.getTime()
-        ),
+        id: row.id,
+        startTime: startTime.toISOString(),
+        countdownStart: countdownStart.toISOString(),
+        timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
         timeUntilStart: Math.max(0, startTime.getTime() - now.getTime()),
-        currentRound: tournament.current_round || 0,
-        totalRounds: TOURNAMENT_CONFIG.totalRounds,
-        breakTimeRemaining: Math.floor(breakTimeRemaining / 1000), // in seconds
+        currentRound: 0,
+        totalRounds: 5,
       };
     }
 
-    // No active tournament, calculate next scheduled one
+    // Return default scheduled tournament
     const nextTime = getNextTournamentTime();
     const countdownStart = getCountdownStartTime();
 
-    let status = "scheduled";
-    if (now >= countdownStart && now < nextTime) {
-      status = "countdown";
-    }
-
     return {
-      status,
-      scheduled_start: nextTime,
-      startTime: nextTime,
-      countdownStart,
-      timeUntilCountdown: Math.max(
-        0,
-        countdownStart.getTime() - now.getTime()
-      ),
+      status: "scheduled",
+      scheduled_start: nextTime.toISOString(),
+      startTime: nextTime.toISOString(),
+      countdownStart: countdownStart.toISOString(),
+      timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
       timeUntilStart: Math.max(0, nextTime.getTime() - now.getTime()),
       currentRound: 0,
-      totalRounds: TOURNAMENT_CONFIG.totalRounds,
+      totalRounds: 5,
     };
   } catch (error) {
     console.error("Error getting tournament status:", error);
-    // Return a fallback status instead of throwing
     return {
       status: "scheduled",
-      scheduled_start: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      countdownStart: new Date(Date.now() + 23 * 60 * 60 * 1000), // 23 hours from now
+      scheduled_start: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      countdownStart: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
       timeUntilCountdown: 23 * 60 * 60 * 1000,
       timeUntilStart: 24 * 60 * 60 * 1000,
       currentRound: 0,
-      totalRounds: TOURNAMENT_CONFIG.totalRounds,
+      totalRounds: 5,
     };
   }
 }

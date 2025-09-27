@@ -7,57 +7,13 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
-    const { type = "all" } = req.query; // "all", "weekly", "latest"
+    const { type = "all" } = req.query; // "all", "weekly"
     
     try {
       let query;
       let params = [];
       
-      if (type === "latest") {
-        // Recent valid entries, most recent first (no per-user aggregation)
-        query = `
-          SELECT username, moves, time, created_at
-          FROM leaderboard
-          WHERE (timeout = false OR timeout IS NULL)
-            AND time > 0 AND time < 300
-          ORDER BY created_at DESC, id DESC
-          LIMIT 50
-        `;
-      } else if (type === "today") {
-        // Today-only per-user best (case-insensitive usernames);
-        // if none today, fall back to per-user best overall (not raw recent list)
-        query = `
-          WITH best_today AS (
-            SELECT DISTINCT ON (lower(username))
-              username, moves, time, created_at
-            FROM leaderboard
-            WHERE (timeout = false OR timeout IS NULL)
-              AND time > 0 AND time < 300
-              AND created_at >= date_trunc('day', now())
-              AND created_at < date_trunc('day', now()) + interval '1 day'
-            ORDER BY lower(username), moves ASC, time ASC, created_at DESC
-          ),
-          today_count AS (
-            SELECT COUNT(*) AS n FROM best_today
-          ),
-          fallback_per_user_best AS (
-            SELECT DISTINCT ON (lower(username))
-              username, moves, time, created_at
-            FROM leaderboard
-            WHERE (timeout = false OR timeout IS NULL)
-              AND time > 0 AND time < 300
-            ORDER BY lower(username), moves ASC, time ASC, created_at DESC
-          )
-          SELECT username, moves, time, created_at
-          FROM best_today
-          WHERE (SELECT n FROM today_count) > 0
-          UNION ALL
-          SELECT username, moves, time, created_at
-          FROM fallback_per_user_best
-          WHERE (SELECT n FROM today_count) = 0
-          ORDER BY moves ASC, time ASC, created_at DESC
-        `;
-      } else if (type === "weekly") {
+      if (type === "weekly") {
         query = `
           SELECT username, moves, time, created_at
           FROM leaderboard l1

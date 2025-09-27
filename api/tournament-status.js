@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     try {
       const now = new Date();
 
-      // Prefer live tournament instance
+      // Check for active tournaments first
       const tRes = await pool.query(
         `SELECT * FROM tournaments WHERE status IN ('prep','active','break') ORDER BY created_at DESC LIMIT 1`
       );
@@ -18,30 +18,36 @@ export default async function handler(req, res) {
       if (tRes.rows.length > 0) {
         const t = tRes.rows[0];
         let countdownStart = new Date(t.created_at);
-        let startTime = new Date(countdownStart.getTime() + 5 * 60 * 1000);
+        let startTime = new Date(countdownStart.getTime() + 5 * 60 * 1000); // Default: 5 min after creation
+        
+        // For auto tournaments, get schedule time
         if (t.mode === 'auto' && t.schedule_id) {
-          // For auto tournaments, derive from tournament_schedule.scheduled_start
-          const sRes2 = await pool.query(`SELECT scheduled_start FROM tournament_schedule WHERE id = $1 LIMIT 1`, [t.schedule_id]);
-          if (sRes2.rows.length > 0) {
-            startTime = new Date(sRes2.rows[0].scheduled_start);
-            countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
+          const sRes = await pool.query(
+            `SELECT scheduled_start FROM tournament_schedule WHERE id = $1 LIMIT 1`, 
+            [t.schedule_id]
+          );
+          if (sRes.rows.length > 0) {
+            startTime = new Date(sRes.rows[0].scheduled_start);
+            countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000); // 25 hours before
           }
         }
 
-        // If prep and 5m elapsed, flip to active/current_round=1 and mark round 1 active
+        // Auto-advance from prep to active if time has elapsed
         if (t.status === 'prep' && now >= startTime) {
-          await pool.query(`UPDATE tournaments SET status='active', current_round=1, actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id]);
-          await pool.query(`UPDATE rounds SET status='active', started_at=COALESCE(started_at, CURRENT_TIMESTAMP) WHERE tournament_id=$1 AND round_number=1`, [t.id]);
+          await pool.query(
+            `UPDATE tournaments SET status='active', current_round=1, 
+             actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), 
+             updated_at=CURRENT_TIMESTAMP WHERE id=$1`, 
+            [t.id]
+          );
+          await pool.query(
+            `UPDATE rounds SET status='active', started_at=CURRENT_TIMESTAMP 
+             WHERE tournament_id=$1 AND round_number=1`, 
+            [t.id]
+          );
+          // Update the local object to reflect changes
           t.status = 'active';
           t.current_round = 1;
-          // Notification hook (SSE/Webhook) can be added here if needed
-        }
-
-        // Determine current round id
-        let roundId = null;
-        if (t.current_round && t.current_round > 0) {
-          const rRes = await pool.query(`SELECT id FROM rounds WHERE tournament_id=$1 AND round_number=$2 LIMIT 1`, [t.id, t.current_round]);
-          if (rRes.rows.length > 0) roundId = rRes.rows[0].id;
         }
 
         return res.status(200).json({
@@ -49,24 +55,34 @@ export default async function handler(req, res) {
           mode: t.mode,
           status: t.status,
           currentRound: t.current_round || 0,
-          totalRounds: t.total_rounds,
-          countdownStart,
-          startTime,
+          totalRounds: t.total_rounds || 5,
+          countdownStart: countdownStart.toISOString(),
+          startTime: startTime.toISOString(),
           timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
           timeUntilStart: Math.max(0, startTime.getTime() - now.getTime()),
-          roundId,
         });
       }
 
-      // No live tournament: expose next scheduled countdown from tournament_schedule
-      const sRes = await pool.query(`SELECT scheduled_start FROM tournament_schedule WHERE scheduled_start >= NOW() ORDER BY scheduled_start ASC LIMIT 1`);
+      // No active tournament: check for upcoming scheduled tournaments
+      const sRes = await pool.query(
+        `SELECT ts.* FROM tournament_schedule ts 
+         LEFT JOIN tournaments t ON t.schedule_id = ts.id 
+         WHERE (t.id IS NULL OR t.status IN ('completed', 'stopped')) 
+         AND ts.scheduled_start >= NOW() 
+         ORDER BY ts.scheduled_start ASC LIMIT 1`
+      );
+
       if (sRes.rows.length > 0) {
-        const startTime = new Date(sRes.rows[0].scheduled_start);
+        const schedule = sRes.rows[0];
+        const startTime = new Date(schedule.scheduled_start);
         const countdownStart = new Date(startTime.getTime() - 25 * 60 * 60 * 1000);
+        
+        const status = now >= countdownStart && now < startTime ? 'countdown' : 'scheduled';
+        
         return res.status(200).json({
-          status: now >= countdownStart && now < startTime ? 'countdown' : 'scheduled',
-          countdownStart,
-          startTime,
+          status,
+          countdownStart: countdownStart.toISOString(),
+          startTime: startTime.toISOString(),
           timeUntilCountdown: Math.max(0, countdownStart.getTime() - now.getTime()),
           timeUntilStart: Math.max(0, startTime.getTime() - now.getTime()),
           currentRound: 0,
@@ -75,7 +91,11 @@ export default async function handler(req, res) {
       }
 
       // Nothing scheduled
-      return res.status(200).json({ status: 'idle', currentRound: 0, totalRounds: 5 });
+      return res.status(200).json({ 
+        status: 'idle', 
+        currentRound: 0, 
+        totalRounds: 5 
+      });
     } catch (err) {
       console.error("Error fetching tournament status:", err);
       res.status(500).json({ error: "Failed to fetch tournament status" });

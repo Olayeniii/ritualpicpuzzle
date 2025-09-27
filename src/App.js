@@ -19,7 +19,7 @@ function App() {
   const [gameOver, setGameOver] = useState(false);
   const [achievements, setAchievements] = useState([]);
   const [currentRound, setCurrentRound] = useState(1);
-  const [leaderboardType, setLeaderboardType] = useState("latest"); // default to latest entries leaderboard
+  const [leaderboardType, setLeaderboardType] = useState("weekly");
   const [tournamentMode, setTournamentMode] = useState(false); // automatically set based on tournament status
   const [tournamentStatus, setTournamentStatus] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -48,9 +48,6 @@ function App() {
       
       if (currentType === "weekly") {
         url += "?type=weekly";
-      } else if (currentType === "latest") {
-        // Map UI "Today" to backend today endpoint (per-user best of today)
-        url += "?type=latest";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
@@ -178,8 +175,6 @@ const fetchTournamentStatus = useCallback(async () => {
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
     if (!tournamentStatus || showAdminPanel) return;
-    // Do not override if operator explicitly set "today"
-    if (leaderboardType === 'latest') return;
     
     switch (tournamentStatus.status) {
       case 'countdown':
@@ -233,12 +228,20 @@ const fetchTournamentStatus = useCallback(async () => {
     }
   }, [gameStarted, gameOver]);
 
-  // submit score
+// submit score
 const submitScore = useCallback(
     async (timeout = false) => {
       try {
         const ts = tournamentStatusRef.current;
-        const tournamentId = ts && ts.id ? ts.id : null;
+        let tournamentId = null;
+        let roundId = null;
+        
+        // Only include tournament data if we're in an active tournament
+        if (tournamentMode && ts && ts.id && ts.status === 'active') {
+          tournamentId = ts.id;
+          // roundId can be resolved from backend if needed; using null for now
+        }
+        
         await fetch("/api/submit-score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -248,17 +251,15 @@ const submitScore = useCallback(
             time: timer, 
             timeout,
             round: tournamentMode ? currentRound : 1,
-            tournamentId
+            tournamentId: tournamentId,
+            roundId: roundId
           }),
         });
         
-        // Debounce leaderboard fetch to prevent rapid requests
+        // Refresh leaderboard after a short delay
         setTimeout(() => {
-        fetchLeaderboard();
+          fetchLeaderboard();
         }, 1000);
-        
-        // In tournament mode, the round progression is now handled by the server
-        // The frontend will sync with backend tournament status via fetchTournamentStatus
       } catch (err) {
         console.error("Failed to submit score:", err);
       }
@@ -706,7 +707,6 @@ useEffect(() => {
   <div className="leaderboard-header">
     <h2>
       {leaderboardType === 'tournament' ? '🏆 Tournament Leaderboard' : 
-       leaderboardType === 'latest' ? '🆕 Today' : 
        leaderboardType === 'weekly' ? '📅 This Week' : 
        leaderboardType === 'final' ? '🏅 Final Tournament Results' : 
        '🏅 All Time Leaderboard'}
@@ -868,8 +868,12 @@ function AdminDashboard({
         <div className="control-group">
           <h3>Tournament Control</h3>
           <button 
-            onClick={() => apiCall("/api/admin-dashboard", { action: "start_tournament" })}
-            disabled={loading || tournamentStatus?.status === 'active'}
+            onClick={() => apiCall("/api/admin-dashboard", { 
+              action: "start_tournament",
+              mode: 'manual',
+              total_rounds: 5
+            })}
+            disabled={loading || ['active', 'prep', 'break'].includes(tournamentStatus?.status)}
           >
             🚀 Start Tournament Now
           </button>
@@ -902,7 +906,6 @@ function AdminDashboard({
               onChange={(e) => setLeaderboardType(e.target.value)}
               className="admin-select"
             >
-              <option value="latest">Today</option>
               <option value="all">All Time</option>
               <option value="weekly">This Week</option>
               <option value="tournament">Tournament</option>
