@@ -14,6 +14,7 @@ export default async function handler(req, res) {
   if (!isAdmin) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  const adminUsername = process.env.ADMIN_USERNAME || 'ritual-admin';
   
   try {
     if (req.method === "GET") {
@@ -90,16 +91,15 @@ export default async function handler(req, res) {
       const { action } = req.body;
       
       if (action === "start_tournament") {
-        const { mode = 'manual', total_rounds = 5, schedule_id = null, created_by = null } = req.body;
+        const { mode = 'manual', total_rounds = 5, schedule_id = null } = req.body;
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
-          // Robust insert: omit created_by to avoid NOT NULL constraint issues
           const tRes = await client.query(
-            `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_at, updated_at)
-             VALUES ($1, $2, $3, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_by, created_at, updated_at)
+             VALUES ($1, $2, $3, 'prep', 0, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
              RETURNING *`,
-            [schedule_id, mode, total_rounds]
+            [schedule_id, mode, total_rounds, adminUsername]
           );
           const t = tRes.rows[0];
           const inserts = [];
@@ -196,10 +196,10 @@ export default async function handler(req, res) {
             try {
               await client.query('BEGIN');
               const tRes = await client.query(
-                `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_at, updated_at)
-                 VALUES ($1, 'auto', $2, 'prep', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_by, created_at, updated_at)
+                 VALUES ($1, 'auto', $2, 'prep', 0, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                  RETURNING *`,
-                [row.id, totalRounds]
+                [row.id, totalRounds, adminUsername]
               );
               const t = tRes.rows[0];
               const inserts = [];

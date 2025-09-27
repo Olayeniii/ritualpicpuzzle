@@ -28,6 +28,8 @@ function App() {
   const [showAdminKey, setShowAdminKey] = useState(false);
   const [adminKey, setAdminKey] = useState("");
   const [logoLongPressTimer, setLogoLongPressTimer] = useState(null);
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Use refs to track current values to avoid dependency issues
   const leaderboardTypeRef = useRef(leaderboardType);
@@ -146,6 +148,11 @@ const fetchTournamentStatus = useCallback(async () => {
   useEffect(() => {
     fetchLeaderboard();
   }, [leaderboardType, fetchLeaderboard]);
+  
+  // Reset pagination when leaderboard type changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [leaderboardType]);
   
   // Tournament countdown effect - compute locally, low frequency
   useEffect(() => {
@@ -739,38 +746,57 @@ useEffect(() => {
       </tr>
     </thead>
     <tbody>
-      {leaderboard.map((entry, i) => {
-        let className = "";
-        if (i === 0) className = "gold";
-        else if (i === 1) className = "silver";
-        else if (i === 2) className = "bronze";
-
-        return (
-          <tr key={i} className={className}>
-            <td>{i + 1}</td>
-            <td>{entry.username}</td>
-            {leaderboardType === 'final' ? (
-              <>
-                <td>{entry.rounds_won} 🏆</td>
-                <td>
-                  {entry.won_rounds && entry.won_rounds.length > 0 ? 
-                    entry.won_rounds.map(round => `R${round}`).join(', ') : 
-                    '-'
-                  }
-                </td>
-                <td>{entry.rounds_completed}/5</td>
-              </>
-            ) : (
-              <>
-                <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
-                <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
-              </>
-            )}
-          </tr>
-        );
-      })}
+      {(() => {
+        const pageStartIndex = (currentPage - 1) * PAGE_SIZE;
+        const pageItems = leaderboard.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+        return pageItems.map((entry, i) => {
+          const rank = pageStartIndex + i + 1;
+          let className = "";
+          if (rank === 1) className = "gold";
+          else if (rank === 2) className = "silver";
+          else if (rank === 3) className = "bronze";
+          return (
+            <tr key={rank} className={className}>
+              <td>{rank}</td>
+              <td>{entry.username}</td>
+              {leaderboardType === 'final' ? (
+                <>
+                  <td>{entry.rounds_won} 🏆</td>
+                  <td>
+                    {entry.won_rounds && entry.won_rounds.length > 0 ? 
+                      entry.won_rounds.map(round => `R${round}`).join(', ') : 
+                      '-'
+                    }
+                  </td>
+                  <td>{entry.rounds_completed}/5</td>
+                </>
+              ) : (
+                <>
+                  <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
+                  <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
+                </>
+              )}
+            </tr>
+          );
+        });
+      })()}
     </tbody>
   </table>
+  <div className="pagination" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+    <button 
+      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+      disabled={currentPage <= 1}
+    >
+      ◀ Previous
+    </button>
+    <span>Page {currentPage} of {Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE))}</span>
+    <button 
+      onClick={() => setCurrentPage(p => Math.min(Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE)), p + 1))}
+      disabled={currentPage >= Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE))}
+    >
+      Next ▶
+    </button>
+  </div>
 </aside>
 
       </div>
