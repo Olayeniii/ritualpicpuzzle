@@ -9,19 +9,19 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const result = await pool.query(
-        `SELECT id, schedule_start FROM tournament_schedule ORDER BY schedule_start ASC LIMIT 100`
+        `SELECT id, scheduled_start FROM tournament_schedule ORDER BY scheduled_start ASC LIMIT 100`
       );
       return res.status(200).json(result.rows);
     }
 
     if (req.method === "POST") {
-      const { schedule_start } = req.body;
-      if (!schedule_start) {
-        return res.status(400).json({ error: "schedule_start is required" });
+      const { scheduled_start } = req.body;
+      if (!scheduled_start) {
+        return res.status(400).json({ error: "scheduled_start is required" });
       }
-      const start = new Date(schedule_start);
+      const start = new Date(scheduled_start);
       const result = await pool.query(
-        `INSERT INTO tournament_schedule (schedule_start, created_at, updated_at)
+        `INSERT INTO tournament_schedule (scheduled_start, created_at, updated_at)
          VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING *`,
         [start]
       );

@@ -177,8 +177,6 @@ const fetchTournamentStatus = useCallback(async () => {
   
   // Tournament countdown effect - compute locally, low frequency
   useEffect(() => {
-    // Only compute after interaction
-    if (!(gameStarted || showAdminPanel)) { setCountdown(null); return; }
     if (!tournamentStatus?.status) { setCountdown(null); return; }
 
     const compute = () => {
@@ -206,7 +204,7 @@ const fetchTournamentStatus = useCallback(async () => {
     // Light cadence: every 15s; final minute handled by separate effect
     const id = setInterval(compute, 15000);
     return () => clearInterval(id);
-  }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, tournamentStatus?.countdownStart, gameStarted, showAdminPanel, fetchTournamentStatus]);
+  }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, tournamentStatus?.countdownStart, fetchTournamentStatus]);
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
@@ -691,12 +689,12 @@ useEffect(() => {
       </header>
 
       {/* Tournament Status & Countdown */}
-      {tournamentStatus && (
+      {tournamentStatus && ['scheduled','countdown','active','break'].includes(tournamentStatus.status) && (
         <div className={`tournament-banner ${tournamentStatus.status}`}>
-          {tournamentStatus.status === 'scheduled' && countdown && (
+          {tournamentStatus.status === 'scheduled' && (
             <div className="tournament-info">
               <h3>🏆 Next Tournament</h3>
-              <p>Countdown begins in: <strong>{formatCountdown(countdown)}</strong></p>
+              <p>Countdown begins in: <strong>{countdown ? formatCountdown(countdown) : 'soon'}</strong></p>
               <small>Wednesday 2:00 PM UTC</small>
             </div>
           )}

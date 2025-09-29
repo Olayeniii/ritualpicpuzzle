@@ -24,7 +24,7 @@ export default async function handler(req, res) {
           SUM(time) AS total_time,
           COUNT(*) AS rounds_completed
          FROM leaderboard
-         WHERE tournament_id = $1
+         WHERE tournament_id = $1::int
            AND (timeout = false OR timeout IS NULL)
            AND time < 300
          GROUP BY username
@@ -37,8 +37,8 @@ export default async function handler(req, res) {
       result = await pool.query(
         `SELECT username, moves, time, created_at
          FROM leaderboard
-         WHERE tournament_id = $1
-           AND round = $2
+         WHERE tournament_id = $1::int
+           AND round = $2::int
            AND (timeout = false OR timeout IS NULL)
            AND time < 300
          ORDER BY moves ASC, time ASC`,
@@ -49,6 +49,6 @@ export default async function handler(req, res) {
     res.status(200).json(result.rows);
   } catch (err) {
     console.error("Error fetching tournament leaderboard:", err);
-    res.status(500).json({ error: "Failed to fetch tournament leaderboard" });
+    res.status(500).json({ error: "Failed to fetch tournament leaderboard: " + (err.message || 'unknown error') });
   }
 }
