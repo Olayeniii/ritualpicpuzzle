@@ -54,7 +54,7 @@ export default async function handler(req, res) {
           id: t.id,
           mode: t.mode,
           status: t.status,
-          currentRound: t.current_round || 0,
+          currentRound: t.current_round || 1,
           totalRounds: t.total_rounds || 5,
           countdownStart: countdownStart.toISOString(),
           startTime: startTime.toISOString(),

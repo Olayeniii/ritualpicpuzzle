@@ -1,0 +1,10 @@
+{
+  "crons": [
+    {
+      "path": "/api/system/cron-scheduler",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+
+

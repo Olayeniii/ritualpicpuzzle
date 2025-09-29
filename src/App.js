@@ -32,6 +32,15 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
 
+  // Toast helpers
+  const showToast = useCallback((message, type = 'info', durationMs = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter(t => t.id !== id));
+    }, durationMs);
+  }, []);
+
   // Use refs to track current values to avoid dependency issues
   const leaderboardTypeRef = useRef(leaderboardType);
   const tournamentStatusRef = useRef(tournamentStatus);
@@ -48,33 +57,46 @@ function App() {
     const currentType = leaderboardTypeRef.current;
     try {
       let url = "/api/leaderboard";
+      let params = "";
       
       if (currentType === "weekly") {
-        url += "?type=weekly";
+        params = "?type=weekly";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
-        const tid = ts && ts.id ? `&tournamentId=${ts.id}` : "";
-        // During an active round, show the per-round leaderboard; otherwise show combined
-        if (ts && ts.status === 'active') {
-          const round = ts.currentRound || 1;
-          url = `/api/tournament?round=${round}&mode=single${tid}`;
+        const tid = ts && ts.id ? ts.id : null;
+        
+        if (tid) {
+          // Use tournaments.id for the API call
+          if (ts && ts.status === 'active') {
+            const round = ts.currentRound || 1;
+            url = `/api/tournament?round=${round}&mode=single&tournamentId=${tid}`;
+          } else {
+            url = `/api/tournament?round=1&mode=combined&tournamentId=${tid}`;
+          }
         } else {
-          url = `/api/tournament?round=1&mode=combined${tid}`;
+          // Fallback to weekly if no tournament ID
+          params = "?type=weekly";
         }
       } else if (currentType === "final") {
         url = `/api/tournament-final`;
       }
       
-      const res = await fetch(url);
+      const finalUrl = params ? url + params : url;
+      console.log("Fetching leaderboard from:", finalUrl);
+      
+      const res = await fetch(finalUrl);
       if (!res.ok) {
         console.error("Leaderboard API error:", res.status, res.statusText);
-        return; // Don't update state on error
+        // Set empty array instead of keeping old data to avoid confusion
+        setLeaderboard([]);
+        return;
       }
       const data = await res.json();
       setLeaderboard(data);
     } catch (err) {
       console.error("Failed to fetch leaderboard:", err);
-      // Keep existing leaderboard on error to prevent UI flashing
+      // Set empty array on error
+      setLeaderboard([]);
     }
   }, []); // No dependencies - truly stable
 
@@ -102,13 +124,11 @@ const fetchTournamentStatus = useCallback(async () => {
   }
 }, []);
 
-  // Initial fetch on mount; status only after interaction (game or admin panel)
+  // Initial fetch on mount, always load tournament status once
   useEffect(() => {
     fetchLeaderboard();
-    if (gameStarted || showAdminPanel) {
-      fetchTournamentStatus();
-    }
-  }, [fetchLeaderboard, fetchTournamentStatus, gameStarted, showAdminPanel, leaderboardType]);
+    fetchTournamentStatus();
+  }, [fetchLeaderboard, fetchTournamentStatus, leaderboardType]);
   
   // Smart tournament checking - ultra-minimal polling (only after interaction)
   useEffect(() => {
@@ -157,15 +177,23 @@ const fetchTournamentStatus = useCallback(async () => {
   
   // Tournament countdown effect - compute locally, low frequency
   useEffect(() => {
-    // Only compute after interaction and only during countdown
+    // Only compute after interaction
     if (!(gameStarted || showAdminPanel)) { setCountdown(null); return; }
-    if (tournamentStatus?.status !== 'countdown') { setCountdown(null); return; }
+    if (!tournamentStatus?.status) { setCountdown(null); return; }
 
     const compute = () => {
       const now = new Date();
-      const startTime = tournamentStatus.startTime || tournamentStatus.scheduled_start;
-      if (!startTime) { setCountdown(null); return; }
-      const timeLeft = new Date(startTime) - now;
+      let targetTime = null;
+      if (tournamentStatus.status === 'scheduled') {
+        targetTime = tournamentStatus.countdownStart || tournamentStatus.startTime || tournamentStatus.scheduled_start;
+      } else if (tournamentStatus.status === 'countdown') {
+        targetTime = tournamentStatus.startTime || tournamentStatus.scheduled_start;
+      } else {
+        setCountdown(null);
+        return;
+      }
+      if (!targetTime) { setCountdown(null); return; }
+      const timeLeft = new Date(targetTime) - now;
       if (timeLeft > 0) {
         setCountdown(Math.ceil(timeLeft / 1000));
       } else {
@@ -178,7 +206,7 @@ const fetchTournamentStatus = useCallback(async () => {
     // Light cadence: every 15s; final minute handled by separate effect
     const id = setInterval(compute, 15000);
     return () => clearInterval(id);
-  }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, gameStarted, showAdminPanel, fetchTournamentStatus]);
+  }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, tournamentStatus?.countdownStart, gameStarted, showAdminPanel, fetchTournamentStatus]);
   
   // Auto-switch modes based on tournament status (only when admin panel is not open)
   useEffect(() => {
@@ -242,27 +270,44 @@ const submitScore = useCallback(
       try {
         const ts = tournamentStatusRef.current;
         let tournamentId = null;
-        let roundId = null;
         
         // Only include tournament data if we're in an active tournament
         if (tournamentMode && ts && ts.id && ts.status === 'active') {
           tournamentId = ts.id;
-          // roundId can be resolved from backend if needed; using null for now
+          console.log("Submitting to tournament:", tournamentId, "Round:", currentRound);
         }
         
-        await fetch("/api/submit-score", {
+        const submissionData = {
+          username: username.trim(),
+          moves,
+          time: timer,
+          timeout,
+          round: tournamentMode ? currentRound : 1,
+        };
+        
+        // Add tournamentId if we have one
+        if (tournamentId) {
+          submissionData.tournamentId = tournamentId;
+        }
+        
+        console.log("Submitting score:", submissionData);
+        
+        const response = await fetch("/api/submit-score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            username, 
-            moves, 
-            time: timer, 
-            timeout,
-            round: tournamentMode ? currentRound : 1,
-            tournamentId: tournamentId,
-            roundId: roundId
-          }),
+          body: JSON.stringify(submissionData),
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Submit score failed:", response.status, errorText);
+          showToast("Failed to submit score", 'error');
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log("Score submitted successfully:", result);
+        showToast("Score submitted successfully!", 'success');
         
         // Refresh leaderboard after a short delay
         setTimeout(() => {
@@ -272,12 +317,12 @@ const submitScore = useCallback(
         console.error("Failed to submit score:", err);
       }
     },
-    [username, moves, timer, tournamentMode, currentRound, fetchLeaderboard]
+    [username, moves, timer, tournamentMode, currentRound, fetchLeaderboard, showToast]
   );
 
   // auto game over if time > MAX_TIME
   useEffect(() => {
-    if (gameStarted && timer >= MAX_TIME && !gameOver) {
+    if (gameStarted && timer >= MAX_TIME && !gameOver && moves > 0) {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -285,7 +330,7 @@ const submitScore = useCallback(
       setGameOver(true);
       submitScore(true); // mark timeout
     }
-  }, [timer, gameStarted, gameOver, submitScore]);
+  }, [timer, gameStarted, gameOver, submitScore, moves]);
 
 
 
@@ -471,14 +516,7 @@ useEffect(() => {
     return pages;
   };
 
-  // Toast helpers
-  const showToast = useCallback((message, type = 'info', durationMs = 3000) => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter(t => t.id !== id));
-    }, durationMs);
-  }, []);
+  
 
   // Calculate puzzle completion progress
   const getProgress = () => {
