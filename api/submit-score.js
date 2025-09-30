@@ -67,32 +67,32 @@ export default async function handler(req, res) {
             }
 
             await pool.query(
-              `INSERT INTO leaderboard (username, moves, time, timeout, round, tournament_id, round_id, created_at) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
-              [username, movesToStore, timeToStore, timeout, currentRound, tournamentIdToStore, roundIdToStore]
+              `INSERT INTO leaderboard (username, moves, time, timeout, tournament_id, round_id, created_at) 
+               VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+              [username, movesToStore, timeToStore, timeout, tournamentIdToStore, roundIdToStore]
             );
           } else {
             // Tournament id not found; fall back to regular game insert
             await pool.query(
-              `INSERT INTO leaderboard (username, moves, time, timeout, round, created_at) 
-               VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
-              [username, movesToStore, timeToStore, timeout, round || 1]
+              `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
+               VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+              [username, movesToStore, timeToStore, timeout]
             );
           }
         } catch (e) {
           // On any lookup error, do not block; save as regular game
           await pool.query(
-            `INSERT INTO leaderboard (username, moves, time, timeout, round, created_at) 
-             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)`,
-            [username, movesToStore, timeToStore, timeout, round || 1]
+            `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
+             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+            [username, movesToStore, timeToStore, timeout]
           );
         }
       } else {
         // Regular game (non-tournament)
         await pool.query(
-          `INSERT INTO leaderboard (username, moves, time, timeout, round, tournament_id, round_id, created_at) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
-          [username, movesToStore, timeToStore, timeout, round, null, null]
+          `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+          [username, movesToStore, timeToStore, timeout]
         );
       }
       console.log(`Score submitted: ${username}, moves: ${movesToStore}, time: ${timeToStore}, tournament: ${tournamentId}`);

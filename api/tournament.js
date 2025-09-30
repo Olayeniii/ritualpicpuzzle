@@ -32,16 +32,17 @@ export default async function handler(req, res) {
         [tournamentId]
       );
     } else {
-      // Single round for tournament
+      // Single round for tournament: use round_id to derive round_number
       const roundNum = round || 1;
       result = await pool.query(
-        `SELECT username, moves, time, created_at
-         FROM leaderboard
-         WHERE tournament_id = $1::int
-           AND round = $2::int
-           AND (timeout = false OR timeout IS NULL)
-           AND time < 300
-         ORDER BY moves ASC, time ASC`,
+        `SELECT l.username, l.moves, l.time, l.created_at
+         FROM leaderboard l
+         LEFT JOIN rounds r ON r.id = l.round_id
+         WHERE l.tournament_id = $1::int
+           AND r.round_number = $2::int
+           AND (l.timeout = false OR l.timeout IS NULL)
+           AND l.time < 300
+         ORDER BY l.moves ASC, l.time ASC`,
         [tournamentId, roundNum]
       );
     }

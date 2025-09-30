@@ -8,26 +8,29 @@ const pool = new Pool({
 export default async function handler(req, res) {
   if (req.method === "GET") {
     try {
+      const { tournamentId } = req.query;
+      if (!tournamentId) {
+        return res.status(400).json({ error: "tournamentId required" });
+      }
       // Get final tournament leaderboard showing round winners and total performance
       const result = await pool.query(`
         WITH round_winners AS (
-          -- Get the best score (lowest moves, then lowest time) for each round
+          -- Best score (lowest moves, then time) per round_number resolved via round_id
           SELECT 
-            round,
-            username,
-            moves,
-            time,
-            created_at,
-            ROW_NUMBER() OVER (PARTITION BY round ORDER BY moves ASC, time ASC) as rank
-          FROM leaderboard
-          WHERE (timeout = false OR timeout IS NULL)
-          AND time < 300
-          AND round IN (1, 2, 3, 4, 5)
-          AND created_at >= date_trunc('week', now())
-          AND created_at < date_trunc('week', now()) + interval '7 days'
+            r.round_number AS round,
+            l.username,
+            l.moves,
+            l.time,
+            l.created_at,
+            ROW_NUMBER() OVER (PARTITION BY r.round_number ORDER BY l.moves ASC, l.time ASC) as rank
+          FROM leaderboard l
+          LEFT JOIN rounds r ON r.id = l.round_id
+          WHERE l.tournament_id = $1::int
+          AND (l.timeout = false OR l.timeout IS NULL)
+          AND l.time < 300
+          AND r.round_number IN (1,2,3,4,5)
         ),
         first_place_winners AS (
-          -- Only keep first place winners for each round
           SELECT * FROM round_winners WHERE rank = 1
         ),
         user_round_wins AS (
@@ -42,19 +45,19 @@ export default async function handler(req, res) {
           GROUP BY username
         ),
         user_total_performance AS (
-          -- Get overall tournament performance for all qualifying users
+          -- Overall performance across rounds 1..5
           SELECT 
-            username,
-            COUNT(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN 1 END) as rounds_completed,
-            SUM(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN moves ELSE 0 END) as total_moves,
-            SUM(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN time ELSE 0 END) as total_time,
-            MIN(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN moves END) as best_moves,
-            MIN(CASE WHEN (timeout = false OR timeout IS NULL) AND time < 300 THEN time END) as best_time
-          FROM leaderboard
-          WHERE round IN (1, 2, 3, 4, 5)
-          AND created_at >= date_trunc('week', now())
-          AND created_at < date_trunc('week', now()) + interval '7 days'
-          GROUP BY username
+            l.username,
+            COUNT(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN 1 END) as rounds_completed,
+            SUM(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.moves ELSE 0 END) as total_moves,
+            SUM(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.time ELSE 0 END) as total_time,
+            MIN(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.moves END) as best_moves,
+            MIN(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.time END) as best_time
+          FROM leaderboard l
+          LEFT JOIN rounds r ON r.id = l.round_id
+          WHERE l.tournament_id = $1::int
+          AND r.round_number IN (1,2,3,4,5)
+          GROUP BY l.username
         )
         SELECT 
           p.username,
@@ -69,14 +72,14 @@ export default async function handler(req, res) {
           ROUND(COALESCE(w.avg_time, 0), 1) as avg_winning_time
         FROM user_total_performance p
         LEFT JOIN user_round_wins w ON p.username = w.username
-        WHERE p.rounds_completed >= 3  -- Only show users who completed at least 3 rounds
+        WHERE p.rounds_completed >= 3
         ORDER BY 
-          w.rounds_won DESC NULLS LAST,  -- Most rounds won first
-          p.rounds_completed DESC,        -- Most rounds completed
-          p.total_moves ASC,             -- Fewest total moves
-          p.total_time ASC               -- Fastest total time
+          w.rounds_won DESC NULLS LAST,
+          p.rounds_completed DESC,
+          p.total_moves ASC,
+          p.total_time ASC
         LIMIT 20
-      `);
+      `, [tournamentId]);
 
       res.status(200).json(result.rows);
     } catch (err) {

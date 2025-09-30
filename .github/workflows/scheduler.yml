@@ -2,8 +2,13 @@ name: Scheduler
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # every day at 00:00 UTC
-  workflow_dispatch:       # lets you run it manually from GitHub UI
+    # Production: once a day at 00:00 UTC
+    # - cron: "0 0 * * *"
+    
+    # Testing: every 15 minutes
+    - cron: "*/15 * * * *"
+
+  workflow_dispatch:  # lets you run it manually from GitHub UI
 
 jobs:
   call-vercel-endpoint:

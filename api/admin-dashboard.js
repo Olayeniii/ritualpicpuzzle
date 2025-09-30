@@ -116,19 +116,7 @@ export default async function handler(req, res) {
             );
           }
           await Promise.all(inserts);
-          // For manual mode, start immediately: set tournament active and round 1 active
-          if (mode === 'manual') {
-            await client.query(
-              `UPDATE tournaments SET status='active', current_round=1, actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE id=$1`,
-              [t.id]
-            );
-            await client.query(
-              `UPDATE rounds SET status='active', started_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=1`,
-              [t.id]
-            );
-            t.status = 'active';
-            t.current_round = 1;
-          }
+          // Manual mode remains in 'prep' (5-minute prep handled by tournament-status)
           await client.query('COMMIT');
           res.status(200).json({ success: true, tournament: t });
         } catch (e) {

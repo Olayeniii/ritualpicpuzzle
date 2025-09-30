@@ -32,8 +32,8 @@ export default async function handler(req, res) {
           }
         }
 
-        // Auto-advance from prep to active if time has elapsed
-        if (t.status === 'prep' && now >= startTime) {
+        // Auto-advance ONLY for auto mode; manual must be started by admin
+        if (t.mode !== 'manual' && t.status === 'prep' && now >= startTime) {
           await pool.query(
             `UPDATE tournaments SET status='active', current_round=1, 
              actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), 
