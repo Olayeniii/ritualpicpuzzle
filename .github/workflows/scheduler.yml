@@ -1,22 +1,10 @@
-name: Scheduler
+name: Test Workflow
 
 on:
-  schedule:
-    - cron: "0 0 * * *"   # every day at 00:00 UTC
-  workflow_dispatch:       # lets you run it manually from GitHub UI
+  workflow_dispatch:
 
 jobs:
-  call-vercel-endpoint:
+  hello:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install deps
-        run: npm ci
-      - name: Run daily cron directly
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: node scripts/run-cron.mjs
+      - run: echo "Hello from GitHub Actions!"
