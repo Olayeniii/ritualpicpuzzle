@@ -1001,7 +1001,7 @@ function AdminDashboard({
           </button>
           <button 
             onClick={() => apiCall("/api/admin-dashboard", { action: "activate_tournament" })}
-            disabled={loading || tournamentStatus?.status !== 'prep'}
+            disabled={loading || !['idle','prep'].includes(tournamentStatus?.status)}
           >
             ▶️ Activate Tournament
           </button>
