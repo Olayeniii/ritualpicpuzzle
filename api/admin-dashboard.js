@@ -182,9 +182,9 @@ export default async function handler(req, res) {
           if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No tournament in prep' });
           const t = tRes.rows[0];
 
-          // Activate tournament and round 1 
-          await pool.query(`UPDATE tournaments SET status='active', current_round=1, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id]);
-          await pool.query(`UPDATE rounds SET status='active', updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=1`, [t.id]);
+          // Activate tournament and round 1 (stamp timestamps)
+          await pool.query(`UPDATE tournaments SET status='active', current_round=1, actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id]);
+          await pool.query(`UPDATE rounds SET status='active', started_at=COALESCE(started_at, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=1`, [t.id]);
 
           res.status(200).json({ success: true, activated: t.id });
         } catch (e) {
