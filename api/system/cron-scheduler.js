@@ -15,6 +15,14 @@ export default async function handler(req, res) {
     }
 
     try {
+      // Daily tasks aligned with vercel.json (runs once per day at 00:00 UTC)
+      const today = new Date();
+      const day = today.getUTCDay(); // 0 = Sunday
+      if (day === 0) {
+        await runWeeklyReset();
+      }
+      await refreshLeaderboard();
+
       const adminUsername = 'system-cron';
       const totalRounds = 5;
       
@@ -69,7 +77,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ 
         success: true, 
         created: created.length, 
-        tournaments: created
+        tournaments: created,
+        day
       });
     } catch (err) {
       console.error("Cron scheduler error:", err);
@@ -78,6 +87,25 @@ export default async function handler(req, res) {
   } else {
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+}
+
+// Example daily helpers (stubs you can expand with real logic)
+async function runWeeklyReset() {
+  try {
+    console.log("Weekly game reset triggered");
+    // e.g., archive or summarize weekly stats, rotate weekly leaderboards, etc.
+  } catch (e) {
+    console.error("runWeeklyReset error:", e);
+  }
+}
+
+async function refreshLeaderboard() {
+  try {
+    console.log("Daily leaderboard refresh triggered");
+    // e.g., recompute cached aggregates, clean temp data, etc.
+  } catch (e) {
+    console.error("refreshLeaderboard error:", e);
   }
 }
 
