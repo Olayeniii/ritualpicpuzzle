@@ -31,6 +31,7 @@ function App() {
   const PAGE_SIZE = 20;
   const [currentPage, setCurrentPage] = useState(1);
   const [toasts, setToasts] = useState([]);
+  const [playStarted, setPlayStarted] = useState(false); // start game timer on first move
 
   // Toast helpers
   const showToast = useCallback((message, type = 'info', durationMs = 3000) => {
@@ -246,7 +247,7 @@ const fetchTournamentStatus = useCallback(async () => {
   }, [tournamentStatus, showAdminPanel, leaderboardType]);
 
   useEffect(() => {
-    if (gameStarted && !gameOver) {
+    if (playStarted && !gameOver) {
       const id = setInterval(() => setTimer((t) => t + 1), 1000);
       timerIntervalRef.current = id;
       return () => {
@@ -260,7 +261,7 @@ const fetchTournamentStatus = useCallback(async () => {
         timerIntervalRef.current = null;
       }
     }
-  }, [gameStarted, gameOver]);
+  }, [playStarted, gameOver]);
 
 // submit score
 const submitScore = useCallback(
@@ -320,15 +321,16 @@ const submitScore = useCallback(
 
   // auto game over if time > MAX_TIME
   useEffect(() => {
-    if (gameStarted && timer >= MAX_TIME && !gameOver && moves > 0) {
+    if (playStarted && timer >= MAX_TIME && !gameOver) {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
       }
+      setPlayStarted(false);
       setGameOver(true);
       submitScore(true); // mark timeout
     }
-  }, [timer, gameStarted, gameOver, submitScore, moves]);
+  }, [timer, playStarted, gameOver, submitScore]);
 
 
 
@@ -434,6 +436,7 @@ useEffect(() => {
     setTimer(0);
     setGameOver(false);
     setGameStarted(true);
+    setPlayStarted(false);
   };
 
   const resetGame = () => {
@@ -455,6 +458,7 @@ useEffect(() => {
     const emptyIndex = tiles.indexOf(EMPTY_TILE);
     const validMoves = getValidMoves(emptyIndex);
     if (validMoves.includes(i)) {
+      if (!playStarted) setPlayStarted(true);
       const newTiles = [...tiles];
       [newTiles[i], newTiles[emptyIndex]] = [
         newTiles[emptyIndex],
@@ -472,6 +476,7 @@ useEffect(() => {
           clearInterval(timerIntervalRef.current);
           timerIntervalRef.current = null;
         }
+        setPlayStarted(false);
         setGameOver(true);
         submitScore();
       }

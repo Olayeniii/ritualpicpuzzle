@@ -12,7 +12,10 @@ export default async function handler(req, res) {
 
       // Check for active tournaments first
       const tRes = await pool.query(
-        `SELECT * FROM tournaments WHERE status IN ('prep','active','break') ORDER BY created_at DESC LIMIT 1`
+        `SELECT * FROM tournaments 
+         WHERE (status IN ('active','break'))
+            OR (status='prep' AND mode='auto')
+         ORDER BY created_at DESC LIMIT 1`
       );
 
       if (tRes.rows.length > 0) {
