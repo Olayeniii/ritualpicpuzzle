@@ -53,10 +53,18 @@ export default async function handler(req, res) {
           t.current_round = 1;
         }
 
+        // Display mapping for auto tournaments in prep window
+        let displayStatus = t.status;
+        if (t.mode === 'auto' && t.status === 'prep' && countdownStart && startTime) {
+          if (now < startTime) {
+            displayStatus = (now >= countdownStart) ? 'countdown' : 'scheduled';
+          }
+        }
+
         return res.status(200).json({
           id: t.id,
           mode: t.mode,
-          status: t.status,
+          status: displayStatus,
           currentRound: t.current_round || 1,
           totalRounds: t.total_rounds || 5,
           countdownStart: countdownStart.toISOString(),
