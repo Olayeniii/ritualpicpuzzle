@@ -202,8 +202,9 @@ const fetchTournamentStatus = useCallback(async () => {
     };
 
     compute();
-    // Light cadence: every 15s; final minute handled by separate effect
-    const id = setInterval(compute, 15000);
+    // Cadence: 1s during countdown for smooth timer; 15s otherwise
+    const intervalMs = tournamentStatus?.status === 'countdown' ? 1000 : 15000;
+    const id = setInterval(compute, intervalMs);
     return () => clearInterval(id);
   }, [tournamentStatus?.status, tournamentStatus?.startTime, tournamentStatus?.scheduled_start, tournamentStatus?.countdownStart, fetchTournamentStatus]);
   
