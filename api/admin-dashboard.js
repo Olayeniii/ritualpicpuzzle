@@ -175,6 +175,22 @@ export default async function handler(req, res) {
         }
         
       } else if (action === "complete_tournament") {
+      } else if (action === "activate_tournament") {
+        try {
+          // Find latest tournament in prep
+          const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='prep' ORDER BY created_at DESC LIMIT 1`);
+          if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No tournament in prep' });
+          const t = tRes.rows[0];
+
+          // Activate tournament and round 1
+          await pool.query(`UPDATE tournaments SET status='active', current_round=1, actual_start=COALESCE(actual_start, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [t.id]);
+          await pool.query(`UPDATE rounds SET status='active', started_at=COALESCE(started_at, CURRENT_TIMESTAMP), updated_at=CURRENT_TIMESTAMP WHERE tournament_id=$1 AND round_number=1`, [t.id]);
+
+          res.status(200).json({ success: true, activated: t.id });
+        } catch (e) {
+          console.error('Admin activate_tournament error:', e);
+          res.status(500).json({ success: false, error: 'Failed to activate tournament' });
+        }
         try {
           const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='active' ORDER BY created_at DESC LIMIT 1`);
           if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No active tournament' });
