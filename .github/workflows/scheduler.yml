@@ -1,0 +1,15 @@
+name: Scheduler
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # every day at 00:00 UTC
+    - cron: "0 0 * * 0"   # every Sunday at 00:00 UTC
+  workflow_dispatch:       # lets you run it manually from GitHub UI
+
+jobs:
+  call-vercel-endpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Vercel daily/weekly task
+        run: |
+          curl -X POST https://ritualpicpuzzle.vercel.app/api/system/cron-scheduler
