@@ -1,0 +1,16 @@
+name: Tournament Rounds Pinger
+
+on:
+  schedule:
+    # Ping every minute to keep rounds in sync
+    - cron: "*/1 * * * *"
+
+  workflow_dispatch:  # lets you run it manually
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping tournament-status
+        run: |
+          curl -fsS https://ritualpicpuzzle.vercel.app/api/tournament-status || true
