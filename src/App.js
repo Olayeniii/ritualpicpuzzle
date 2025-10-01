@@ -234,15 +234,11 @@ const fetchTournamentStatus = useCallback(async () => {
         break;
         
       case 'completed':
-        // After tournament, show this week's results
-        setTournamentMode(false);
-        setLeaderboardType('weekly');
+        // After tournament, leave current selection as-is unless user changes
         break;
-        
+
       default:
-        // Default to all-time leaderboard
-        setTournamentMode(false);
-        setLeaderboardType('all');
+        // Do not force-reset to all-time; keep whatever the user selected
         break;
     }
   }, [tournamentStatus, showAdminPanel, leaderboardType]);

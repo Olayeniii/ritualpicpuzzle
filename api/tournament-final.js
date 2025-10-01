@@ -87,7 +87,7 @@ export default async function handler(req, res) {
           ROUND(COALESCE(w.avg_time, 0), 1) as avg_winning_time
         FROM user_total_performance p
         LEFT JOIN user_round_wins w ON p.username = w.username
-        WHERE p.rounds_completed >= 3
+        WHERE p.rounds_completed >= 1
         ORDER BY 
           w.rounds_won DESC NULLS LAST,
           p.rounds_completed DESC,
