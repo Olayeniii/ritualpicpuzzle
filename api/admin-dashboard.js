@@ -98,6 +98,14 @@ export default async function handler(req, res) {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
+          // Guard: prevent starting a manual tournament if an auto tournament is pending/active/break
+          if (mode === 'manual') {
+            const autoCheck = await client.query(`SELECT id FROM tournaments WHERE mode='auto' AND status IN ('prep','active','break') ORDER BY created_at DESC LIMIT 1`);
+            if (autoCheck.rows.length > 0) {
+              await client.query('ROLLBACK');
+              return res.status(409).json({ success: false, error: 'Auto tournament in progress/pending; cannot start manual now' });
+            }
+          }
           const tRes = await client.query(
             `INSERT INTO tournaments (schedule_id, mode, total_rounds, status, current_round, created_by, created_at, updated_at)
              VALUES ($1, $2, $3, 'prep', 0, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -177,8 +185,14 @@ export default async function handler(req, res) {
       } else if (action === "complete_tournament") {
       } else if (action === "activate_tournament") {
         try {
-          // Find latest tournament in prep
-          const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='prep' ORDER BY created_at DESC LIMIT 1`);
+          // Guard: do not activate auto tournaments via this endpoint unless explicitly allowed
+          // Only activate manual tournaments in prep, and block if an auto tournament is ongoing
+          const autoCheck = await pool.query(`SELECT id FROM tournaments WHERE mode='auto' AND status IN ('prep','active','break') ORDER BY created_at DESC LIMIT 1`);
+          if (autoCheck.rows.length > 0) {
+            return res.status(409).json({ success: false, error: 'Auto tournament present; manual activation blocked' });
+          }
+          // Find latest manual tournament in prep
+          const tRes = await pool.query(`SELECT * FROM tournaments WHERE status='prep' AND mode='manual' ORDER BY created_at DESC LIMIT 1`);
           if (tRes.rows.length === 0) return res.status(400).json({ success: false, error: 'No tournament in prep' });
           const t = tRes.rows[0];
 

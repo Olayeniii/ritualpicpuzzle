@@ -8,9 +8,24 @@ const pool = new Pool({
 export default async function handler(req, res) {
   if (req.method === "GET") {
     try {
-      const { tournamentId } = req.query;
+      let { tournamentId } = req.query;
+      // Fallback: if no tournamentId, pick the most relevant one automatically
       if (!tournamentId) {
-        return res.status(400).json({ error: "tournamentId required" });
+        const c1 = await pool.query(`SELECT id FROM tournaments WHERE status='completed' ORDER BY end_time DESC NULLS LAST, updated_at DESC LIMIT 1`);
+        if (c1.rows.length > 0) {
+          tournamentId = c1.rows[0].id;
+        } else {
+          const c2 = await pool.query(`SELECT id FROM tournaments WHERE status IN ('active','break') ORDER BY updated_at DESC LIMIT 1`);
+          if (c2.rows.length > 0) {
+            tournamentId = c2.rows[0].id;
+          } else {
+            const c3 = await pool.query(`SELECT id FROM tournaments ORDER BY created_at DESC LIMIT 1`);
+            if (c3.rows.length > 0) tournamentId = c3.rows[0].id;
+          }
+        }
+        if (!tournamentId) {
+          return res.status(404).json({ error: 'No tournaments found' });
+        }
       }
       // Get final tournament leaderboard showing round winners and total performance
       const result = await pool.query(`

@@ -11,12 +11,19 @@ export default async function handler(req, res) {
       const now = new Date();
 
       // Check for active tournaments first
-      const tRes = await pool.query(
+      // Prefer auto tournaments when both exist; otherwise, pick latest active/break, or auto prep
+      let tRes = await pool.query(
         `SELECT * FROM tournaments 
-         WHERE (status IN ('active','break'))
-            OR (status='prep' AND mode='auto')
+         WHERE (mode='auto' AND status IN ('active','break','prep'))
          ORDER BY created_at DESC LIMIT 1`
       );
+      if (tRes.rows.length === 0) {
+        tRes = await pool.query(
+          `SELECT * FROM tournaments 
+           WHERE status IN ('active','break') OR (status='prep' AND mode='auto')
+           ORDER BY created_at DESC LIMIT 1`
+        );
+      }
 
       if (tRes.rows.length > 0) {
         const t = tRes.rows[0];
