@@ -798,64 +798,71 @@ useEffect(() => {
       </div>
     )}
   </div>
-  <table>
-    <thead>
-      <tr>
-        {leaderboardType === 'final' ? (
-          <>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>Rounds Won</th>
-            <th>Won Rounds</th>
-            <th>Completed</th>
-          </>
-        ) : (
-          <>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>Moves</th>
-            <th>Time (s)</th>
-          </>
-        )}
-      </tr>
-    </thead>
-    <tbody>
-      {(() => {
-        const pageStartIndex = (currentPage - 1) * PAGE_SIZE;
-        const pageItems = leaderboard.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
-        return pageItems.map((entry, i) => {
-          const rank = pageStartIndex + i + 1;
-          let className = "";
-          if (rank === 1) className = "gold";
-          else if (rank === 2) className = "silver";
-          else if (rank === 3) className = "bronze";
-          return (
-            <tr key={rank} className={className}>
-              <td>{rank}</td>
-              <td>{entry.username}</td>
-              {leaderboardType === 'final' ? (
-                <>
-                  <td>{entry.rounds_won} 🏆</td>
-                  <td>
-                    {entry.won_rounds && entry.won_rounds.length > 0 ? 
-                      entry.won_rounds.map(round => `R${round}`).join(', ') : 
-                      '-'
-                    }
-                  </td>
-                  <td>{entry.rounds_completed}/5</td>
-                </>
-              ) : (
-                <>
-                  <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
-                  <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
-                </>
-              )}
-            </tr>
-          );
-        });
-      })()}
-    </tbody>
-  </table>
+  <div className="final-leaderboard-wrapper">
+    <table className="final-leaderboard-table">
+      <thead>
+        <tr>
+          {leaderboardType === 'final' ? (
+            <>
+              <th className="rank-col">Rank</th>
+              <th className="player-col">Player</th>
+              <th className="won-col">Rounds Won</th>
+              <th className="won-rounds-col">Won Rounds</th>
+              <th className="completed-col">Completed Rounds</th>
+            </>
+          ) : (
+            <>
+              <th className="regular-rank-col">Rank</th>
+              <th className="regular-player-col">Player</th>
+              <th className="moves-col">Moves</th>
+              <th className="time-col">Time (s)</th>
+            </>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {(() => {
+          const pageStartIndex = (currentPage - 1) * PAGE_SIZE;
+          const pageItems = leaderboard.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+          return pageItems.map((entry, i) => {
+            const rank = pageStartIndex + i + 1;
+            let className = "";
+            if (rank === 1) className = "gold";
+            else if (rank === 2) className = "silver";
+            else if (rank === 3) className = "bronze";
+            return (
+              <tr key={rank} className={className}>
+                <td>{rank}</td>
+                <td>{entry.username}</td>
+                {leaderboardType === 'final' ? (
+                  <>
+                    <td>{entry.rounds_won} 🏆</td>
+                    <td>
+                      {entry.won_rounds && entry.won_rounds.length > 0 ? 
+                        entry.won_rounds.map(round => `R${round}`).join(', ') : 
+                        '-'
+                      }
+                    </td>
+                    <td>
+                      {entry.completed_rounds && entry.completed_rounds.length > 0 ? 
+                        entry.completed_rounds.map(round => `R${round}`).join(', ') : 
+                        '-'
+                      }
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>{leaderboardType === "tournament" ? entry.total_moves || entry.moves : entry.moves}</td>
+                    <td>{leaderboardType === "tournament" ? entry.total_time || entry.time : entry.time}</td>
+                  </>
+                )}
+              </tr>
+            );
+          });
+        })()}
+      </tbody>
+    </table>
+  </div>
   <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
     {(() => {
       const totalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));

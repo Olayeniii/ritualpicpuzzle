@@ -1026,3 +1026,42 @@ html {
   color: white;
   font-weight: bold;
 }
+
+/* Final Leaderboard Table */
+.final-leaderboard-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.final-leaderboard-table {
+  width: 100%;
+  min-width: 600px;
+  table-layout: fixed;
+}
+
+.final-leaderboard-table th {
+  text-align: center;
+  padding: 12px 8px;
+  font-weight: bold;
+  color: #c0c0ff;
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #333;
+}
+
+.final-leaderboard-table td {
+  text-align: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid #222;
+  word-break: break-word;
+}
+
+.final-leaderboard-table th.rank-col { width: 8%; }
+.final-leaderboard-table th.player-col { width: 20%; }
+.final-leaderboard-table th.won-col { width: 12%; }
+.final-leaderboard-table th.won-rounds-col { width: 25%; }
+.final-leaderboard-table th.completed-col { width: 35%; }
+
+.final-leaderboard-table th.regular-rank-col { width: 10%; }
+.final-leaderboard-table th.regular-player-col { width: 30%; }
+.final-leaderboard-table th.moves-col { width: 30%; }
+.final-leaderboard-table th.time-col { width: 30%; }

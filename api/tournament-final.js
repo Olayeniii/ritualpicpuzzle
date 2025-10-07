@@ -60,10 +60,12 @@ export default async function handler(req, res) {
           GROUP BY username
         ),
         user_total_performance AS (
-          -- Overall performance across rounds 1..5
+          -- Overall performance across rounds 1..5 with case-insensitive username deduplication
           SELECT 
-            l.username,
+            LOWER(l.username) as username_lower,
+            MAX(l.username) as username, -- Keep original casing for display
             COUNT(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN 1 END) as rounds_completed,
+            ARRAY_AGG(DISTINCT r.round_number ORDER BY r.round_number) FILTER (WHERE (l.timeout = false OR l.timeout IS NULL) AND l.time < 300) as completed_rounds,
             SUM(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.moves ELSE 0 END) as total_moves,
             SUM(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.time ELSE 0 END) as total_time,
             MIN(CASE WHEN (l.timeout = false OR l.timeout IS NULL) AND l.time < 300 THEN l.moves END) as best_moves,
@@ -72,13 +74,14 @@ export default async function handler(req, res) {
           LEFT JOIN rounds r ON r.id = l.round_id
           WHERE l.tournament_id = $1::int
           AND r.round_number IN (1,2,3,4,5)
-          GROUP BY l.username
+          GROUP BY LOWER(l.username)
         )
         SELECT 
           p.username,
           COALESCE(w.rounds_won, 0) as rounds_won,
           COALESCE(w.won_rounds, ARRAY[]::integer[]) as won_rounds,
           p.rounds_completed,
+          p.completed_rounds,
           p.total_moves,
           p.total_time,
           p.best_moves,
@@ -86,7 +89,7 @@ export default async function handler(req, res) {
           ROUND(COALESCE(w.avg_moves, 0), 1) as avg_winning_moves,
           ROUND(COALESCE(w.avg_time, 0), 1) as avg_winning_time
         FROM user_total_performance p
-        LEFT JOIN user_round_wins w ON p.username = w.username
+        LEFT JOIN user_round_wins w ON LOWER(p.username) = LOWER(w.username)
         WHERE p.rounds_completed >= 1
         ORDER BY 
           w.rounds_won DESC NULLS LAST,
