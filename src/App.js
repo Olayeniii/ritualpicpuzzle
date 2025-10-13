@@ -3,7 +3,7 @@ import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
 
-const GRID_SIZE = 4;
+const GRID_SIZE = 3;
 const EMPTY_TILE = GRID_SIZE * GRID_SIZE - 1;
 const IMG_URL = puzzleImg;
 const MAX_TIME = 300; // 5 minutes
@@ -234,11 +234,11 @@ const fetchTournamentStatus = useCallback(async () => {
         break;
         
       case 'completed':
-        // After tournament, leave current selection as-is unless user changes
+       
         break;
 
       default:
-        // Do not force-reset to all-time; keep whatever the user selected
+      
         break;
     }
   }, [tournamentStatus, showAdminPanel, leaderboardType]);
