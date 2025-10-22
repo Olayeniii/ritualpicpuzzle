@@ -449,7 +449,7 @@ html {
 }
 
 .tile {
-  background-size: 400% 400%; /* scale across the 4x4 grid */
+  /* background-size is now set inline from grid config */
   background-color: #1a1a1a;
   border: 1px solid #333;
   cursor: pointer;

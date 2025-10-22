@@ -3,8 +3,9 @@ import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
 
-const GRID_SIZE = 3;
-const EMPTY_TILE = GRID_SIZE * GRID_SIZE - 1;
+const GRID_ROWS = 3;
+const GRID_COLS = 4;
+const EMPTY_TILE = GRID_ROWS * GRID_COLS - 1;
 const IMG_URL = puzzleImg;
 const MAX_TIME = 300; // 5 minutes
 
@@ -425,7 +426,7 @@ useEffect(() => {
 
   const startGame = () => {
     const initialTiles = Array.from(
-      { length: GRID_SIZE * GRID_SIZE },
+      { length: GRID_ROWS * GRID_COLS },
       (_, i) => i
     );
     setTiles(shuffle(initialTiles));
@@ -481,14 +482,14 @@ useEffect(() => {
   };
 
   const getValidMoves = (emptyIndex) => {
-    const row = Math.floor(emptyIndex / GRID_SIZE);
-    const col = emptyIndex % GRID_SIZE;
+    const row = Math.floor(emptyIndex / GRID_COLS);
+    const col = emptyIndex % GRID_COLS;
     const moves = [];
 
-    if (row > 0) moves.push(emptyIndex - GRID_SIZE);
-    if (row < GRID_SIZE - 1) moves.push(emptyIndex + GRID_SIZE);
+    if (row > 0) moves.push(emptyIndex - GRID_COLS);
+    if (row < GRID_ROWS - 1) moves.push(emptyIndex + GRID_COLS);
     if (col > 0) moves.push(emptyIndex - 1);
-    if (col < GRID_SIZE - 1) moves.push(emptyIndex + 1);
+    if (col < GRID_COLS - 1) moves.push(emptyIndex + 1);
 
     return moves;
   };
@@ -522,7 +523,7 @@ useEffect(() => {
   const getProgress = () => {
     if (tiles.length === 0) return 0;
     const solvedTiles = tiles.filter((tile, index) => tile === index).length;
-    return (solvedTiles / (GRID_SIZE * GRID_SIZE)) * 100;
+    return (solvedTiles / (GRID_ROWS * GRID_COLS)) * 100;
   };
 
   // Check and award achievements
@@ -757,7 +758,8 @@ useEffect(() => {
           <div
             className="puzzle"
             style={{
-              gridTemplate: `repeat(${GRID_SIZE}, 1fr) / repeat(${GRID_SIZE}, 1fr)`,
+              gridTemplate: `repeat(${GRID_ROWS}, 1fr) / repeat(${GRID_COLS}, 1fr)`,
+              aspectRatio: `${GRID_COLS} / ${GRID_ROWS}`,
             }}
           >
             {tiles.map((tile, i) => (
@@ -769,10 +771,11 @@ useEffect(() => {
                     tile !== EMPTY_TILE ? `url(${IMG_URL})` : "none",
                   backgroundPosition:
                     tile !== EMPTY_TILE
-                      ? `-${(tile % GRID_SIZE) * 100}px -${
-                          Math.floor(tile / GRID_SIZE) * 100
+                      ? `-${(tile % GRID_COLS) * 100}px -${
+                          Math.floor(tile / GRID_COLS) * 100
                         }px`
                       : "none",
+                  backgroundSize: `${GRID_COLS * 100}% ${GRID_ROWS * 100}%`,
                 }}
                 onClick={() => tryMove(i)}
               ></div>
