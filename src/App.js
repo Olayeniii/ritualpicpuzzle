@@ -927,6 +927,7 @@ useEffect(() => {
             
             <AdminDashboard 
               adminAuth={adminAuth}
+              setAdminAuth={setAdminAuth}
               tournamentStatus={tournamentStatus}
               onRefresh={fetchTournamentStatus}
               leaderboardType={leaderboardType}
@@ -959,7 +960,8 @@ useEffect(() => {
 
 // Admin Dashboard Component
 function AdminDashboard({ 
-  adminAuth, 
+  adminAuth,
+  setAdminAuth, 
   tournamentStatus, 
   onRefresh, 
   leaderboardType, 
