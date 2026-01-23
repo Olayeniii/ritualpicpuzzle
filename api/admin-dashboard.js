@@ -1,9 +1,10 @@
 import { Pool } from "pg";
 import { verifyAdminSession } from "./admin-auth.js";
+import { logAdminAction } from "./middleware/audit-log.js";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : false,
 });
 
 export default async function handler(req, res) {
@@ -309,3 +310,12 @@ export default async function handler(req, res) {
     res.status(500).json({ error: "Dashboard operation failed" });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "1mb",
+    },
+    responseLimit: "4mb",
+  },
+};

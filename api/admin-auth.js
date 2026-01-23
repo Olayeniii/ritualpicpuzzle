@@ -1,8 +1,21 @@
-// Simple environment-based admin authentication
+// Simple environment-based admin authentication with JWT tokens
 // No database or complex crypto needed for this secure approach
+import { authLimiter } from "./middleware/rate-limit.js";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const JWT_EXPIRY = "1h";
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
+    // Apply rate limiting
+    await new Promise((resolve, reject) => {
+      authLimiter(req, res, (result) => {
+        if (result instanceof Error) reject(result);
+        else resolve(result);
+      });
+    });
+
     const { action, username, adminKey } = req.body;
     
     try {
@@ -12,13 +25,23 @@ export default async function handler(req, res) {
         const envKey = process.env.ADMIN_KEY || 'change-this-key-in-production';
         
         if (username === envUsername && adminKey === envKey) {
-          // Valid admin credentials
+          // Valid admin credentials - generate JWT token
+          const token = jwt.sign(
+            { username: envUsername, role: "admin" },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRY }
+          );
+          
           res.status(200).json({
             isAdmin: true,
-            user: { username: envUsername }
+            user: { username: envUsername },
+            token,
+            expiresIn: 3600 // 1 hour in seconds
           });
         } else {
           // Invalid credentials - don't reveal which part was wrong
+          // Add delay to prevent timing attacks
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           res.status(401).json({ 
             isAdmin: false,
             error: "Invalid credentials" 
@@ -40,8 +63,21 @@ export default async function handler(req, res) {
   }
 }
 
-// Simple admin verification for environment-based auth
-export async function verifyAdminSession(adminKey) {
-  const envKey = process.env.ADMIN_KEY || 'change-this-key-in-production';
-  return adminKey === envKey;
+// JWT token verification
+export async function verifyAdminToken(token) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded.role === "admin";
+  } catch (err) {
+    return false;
+  }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "1mb",
+    },
+    responseLimit: "4mb",
+  },
+};

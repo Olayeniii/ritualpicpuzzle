@@ -330,6 +330,20 @@ const submitScore = useCallback(
     }
   }, [timer, playStarted, gameOver, submitScore]);
 
+  // Check token expiration every minute
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      if (adminAuth?.expiresAt) {
+        if (adminAuth.expiresAt < Date.now()) {
+          setAdminAuth(null);
+          setShowAdminPanel(false);
+          showToast('Session expired. Please login again.', 'warning');
+        }
+      }
+    };
+    const interval = setInterval(checkTokenExpiry, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [adminAuth, showToast]);
 
 
 // format countdown time
@@ -368,8 +382,9 @@ const handleAdminLogin = async () => {
     });
     
     const data = await res.json();
-    if (data.isAdmin) {
-      setAdminAuth({ user: { username }, adminKey: adminKey.trim() });
+    if (data.isAdmin && data.token) {
+      // Store JWT token instead of admin key - token expires automatically
+      setAdminAuth({ user: { username }, token: data.token, expiresAt: Date.now() + (data.expiresIn * 1000) });
       setShowAdminPanel(true);
       setShowAdminKey(false);
       setAdminKey("");
@@ -958,13 +973,21 @@ function AdminDashboard({
   const [loading, setLoading] = useState(false);
   
   const apiCall = async (endpoint, data = {}) => {
+    // Check token expiration before making request
+    if (!adminAuth?.token || (adminAuth?.expiresAt && adminAuth.expiresAt < Date.now())) {
+      showToast("Session expired, please login again", 'warning');
+      // Clear expired auth
+      setAdminAuth(null);
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${adminAuth.adminKey}`
+          "Authorization": `Bearer ${adminAuth.token}`
         },
         body: JSON.stringify(data)
       });
