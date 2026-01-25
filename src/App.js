@@ -58,34 +58,37 @@ function App() {
   const fetchLeaderboard = useCallback(async () => {
     const currentType = leaderboardTypeRef.current;
     try {
-      let url = "/api/leaderboard";
-      let params = "";
-      
+      let url = "/api/game";
+      let params = "?action=leaderboard";
+
       if (currentType === "weekly") {
-        params = "?type=weekly";
+        params = "?action=leaderboard&type=weekly";
       } else if (currentType === "tournament") {
         const ts = tournamentStatusRef.current;
         const tid = ts && ts.id ? ts.id : null;
-        
+
         if (tid) {
           // Use tournaments.id for the API call
           if (ts && ts.status === 'active') {
             const round = ts.currentRound || 1;
-            url = `/api/tournament?round=${round}&mode=single&tournamentId=${tid}`;
+            url = `/api/game?action=tournament&round=${round}&mode=single&tournamentId=${tid}`;
+            params = "";
           } else {
-            url = `/api/tournament?round=1&mode=combined&tournamentId=${tid}`;
+            url = `/api/game?action=tournament&round=1&mode=combined&tournamentId=${tid}`;
+            params = "";
           }
         } else {
           // Fallback to weekly if no tournament ID
-          params = "?type=weekly";
+          params = "?action=leaderboard&type=weekly";
         }
       } else if (currentType === "final") {
         url = `/api/tournament-final`;
+        params = "";
       }
-      
+
       const finalUrl = params ? url + params : url;
       console.log("Fetching leaderboard from:", finalUrl);
-      
+
       const res = await fetch(finalUrl);
       if (!res.ok) {
         console.error("Leaderboard API error:", res.status, res.statusText);
@@ -288,8 +291,8 @@ const submitScore = useCallback(
         }
         
         console.log("Submitting score:", submissionData);
-        
-        const response = await fetch("/api/submit-score", {
+
+        const response = await fetch("/api/game?action=submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(submissionData),
@@ -371,13 +374,12 @@ const handleAdminLogin = async () => {
   }
   
   try {
-    const res = await fetch("/api/admin-auth", {
+    const res = await fetch("/api/admin?action=login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        action: "login", 
-        username: username.trim(), 
-        adminKey: adminKey.trim() 
+      body: JSON.stringify({
+        username: username.trim(),
+        password: adminKey.trim()  // Changed from adminKey to password
       }),
     });
     
@@ -1020,8 +1022,8 @@ function AdminDashboard({
       <div className="admin-controls">
         <div className="control-group">
           <h3>Tournament Control</h3>
-          <button 
-            onClick={() => apiCall("/api/admin-dashboard", { 
+          <button
+            onClick={() => apiCall("/api/admin", {
               action: "start_tournament",
               mode: 'manual',
               total_rounds: 5,
@@ -1031,26 +1033,26 @@ function AdminDashboard({
           >
             🚀 Start Tournament Now
           </button>
-          <button 
-            onClick={() => apiCall("/api/admin-dashboard", { action: "activate_tournament" })}
+          <button
+            onClick={() => apiCall("/api/admin", { action: "activate_tournament" })}
             disabled={loading || !['idle','prep'].includes(tournamentStatus?.status)}
           >
             ▶️ Activate Tournament
           </button>
-          <button 
-            onClick={() => apiCall("/api/admin-dashboard", { action: "stop_tournament" })}
+          <button
+            onClick={() => apiCall("/api/admin", { action: "stop_tournament" })}
             disabled={loading || !['active', 'countdown'].includes(tournamentStatus?.status)}
           >
             🛑 Stop Tournament
           </button>
-          <button 
-            onClick={() => apiCall("/api/admin-dashboard", { action: "next_round" })}
+          <button
+            onClick={() => apiCall("/api/admin", { action: "next_round" })}
             disabled={loading || tournamentStatus?.status !== 'active'}
           >
             ➡️ Next Round
           </button>
-          <button 
-            onClick={() => apiCall("/api/admin-dashboard", { action: "complete_tournament" })}
+          <button
+            onClick={() => apiCall("/api/admin", { action: "complete_tournament" })}
             disabled={loading || tournamentStatus?.status !== 'active'}
           >
             🏁 Complete Tournament
@@ -1101,10 +1103,10 @@ function AdminDashboard({
         
         <div className="control-group">
           <h3>Maintenance</h3>
-          <button 
+          <button
             onClick={() => {
               if (window.confirm("Delete leaderboard data older than 90 days?")) {
-                apiCall("/api/admin-dashboard", { action: "cleanup_old_data", daysOld: 90 });
+                apiCall("/api/admin", { action: "cleanup_old_data", daysOld: 90 });
               }
             }}
             disabled={loading}
