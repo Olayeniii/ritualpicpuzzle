@@ -9,7 +9,12 @@ const pool = new Pool({
 });
 
 export default async function handler(req, res) {
-  const action = req.method === 'GET' ? req.query.action : req.body.action;
+  // CORS is handled by vercel.json, but handle OPTIONS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const action = req.method === 'GET' ? req.query.action : req.body?.action;
 
   try {
     // Submit score
@@ -188,7 +193,12 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Game API error:", err);
-    return res.status(500).json({ error: "Operation failed" });
+    console.error("Error stack:", err.stack);
+    return res.status(500).json({
+      error: "Operation failed",
+      message: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 }
 

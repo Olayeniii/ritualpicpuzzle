@@ -9,7 +9,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://yourdomain.com"
+          "value": "https://ritualpicpuzzle.vercel.app"
         },
         {
           "key": "Access-Control-Allow-Methods",

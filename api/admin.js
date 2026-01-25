@@ -24,7 +24,12 @@ async function verifyAdminToken(token) {
 }
 
 export default async function handler(req, res) {
-  const { action } = req.method === 'GET' ? req.query : req.body;
+  // CORS is handled by vercel.json, but handle OPTIONS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const { action } = req.method === 'GET' ? req.query : (req.body || {});
 
   try {
     // PUBLIC: Login (no auth required)
@@ -190,7 +195,12 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Admin API error:", err);
-    return res.status(500).json({ error: "Operation failed" });
+    console.error("Error stack:", err.stack);
+    return res.status(500).json({
+      error: "Operation failed",
+      message: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 }
 
