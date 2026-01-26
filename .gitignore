@@ -23,5 +23,12 @@ yarn-debug.log*
 yarn-error.log*
 node_modules
 .env
-*.md
+
+# Security-sensitive files
 generate-secrets.js
+.env.local
+.env.*.local
+
+# Ignore all markdown files except README.md
+*.md
+!README.md

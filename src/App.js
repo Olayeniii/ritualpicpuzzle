@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
-import { logger, suppressExtensionLogs } from "./utils/logger";
+import { logger, suppressExtensionLogs } from "./utils/logger.js";
 
 const GRID_ROWS = 3;
 const GRID_COLS = 4;
