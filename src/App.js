@@ -2,12 +2,16 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import puzzleImg from "./ritualpuzzle.jpg";
 import "./App.css";
 import RitualLogo from "./RitualLogo.js";
+import { logger, suppressExtensionLogs } from "./utils/logger";
 
 const GRID_ROWS = 3;
 const GRID_COLS = 4;
 const EMPTY_TILE = GRID_ROWS * GRID_COLS - 1;
 const IMG_URL = puzzleImg;
 const MAX_TIME = 300; // 5 minutes
+
+// Suppress noisy extension logs in production
+suppressExtensionLogs();
 
 function App() {
   const [username, setUsername] = useState("");
@@ -87,7 +91,7 @@ function App() {
       }
 
       const finalUrl = params ? url + params : url;
-      console.log("Fetching leaderboard from:", finalUrl);
+      logger.log("Fetching leaderboard from:", finalUrl);
 
       const res = await fetch(finalUrl);
       if (!res.ok) {
@@ -274,7 +278,7 @@ const submitScore = useCallback(
         // Only include tournament data if we're in an active tournament
         if (tournamentMode && ts && ts.id && ts.status === 'active') {
           tournamentId = ts.id;
-          console.log("Submitting to tournament:", tournamentId, "Round:", currentRound);
+          logger.log("Submitting to tournament:", tournamentId, "Round:", currentRound);
         }
         
         const submissionData = {
@@ -290,7 +294,7 @@ const submitScore = useCallback(
           submissionData.tournamentId = tournamentId;
         }
         
-        console.log("Submitting score:", submissionData);
+        logger.log("Submitting score:", submissionData);
 
         const response = await fetch("/api/game?action=submit", {
           method: "POST",
@@ -306,7 +310,7 @@ const submitScore = useCallback(
         }
         
         const result = await response.json();
-        console.log("Score submitted successfully:", result);
+        logger.log("Score submitted successfully:", result);
         showToast("Score submitted successfully!", 'success');
         
         // Refresh leaderboard after a short delay
