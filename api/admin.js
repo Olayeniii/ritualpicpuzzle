@@ -32,6 +32,17 @@ export default async function handler(req, res) {
   const { action } = req.method === 'GET' ? req.query : (req.body || {});
 
   try {
+    // TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING
+    if (action === "debug-env" && req.method === "GET") {
+      return res.status(200).json({
+        hasUsername: !!process.env.ADMIN_USERNAME,
+        hasPasswordHash: !!process.env.ADMIN_PASSWORD_HASH,
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        passwordHashPrefix: process.env.ADMIN_PASSWORD_HASH?.substring(0, 15),
+        usernameValue: process.env.ADMIN_USERNAME
+      });
+    }
+
     // PUBLIC: Login (no auth required)
     if (action === "login" && req.method === "POST") {
       const { username, password } = req.body;
@@ -45,7 +56,8 @@ export default async function handler(req, res) {
         receivedPasswordLength: password?.length,
         envUsername: envUsername,
         envPasswordHashExists: !!envPasswordHash,
-        envPasswordHashPrefix: envPasswordHash?.substring(0, 10)
+        envPasswordHashPrefix: envPasswordHash?.substring(0, 10),
+        timestamp: new Date().toISOString()
       });
 
       if (!envUsername || !envPasswordHash) {
