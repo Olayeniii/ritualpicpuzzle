@@ -35,24 +35,38 @@ export default async function handler(req, res) {
     // PUBLIC: Login (no auth required)
     if (action === "login" && req.method === "POST") {
       const { username, password } = req.body;
-      
+
       const envUsername = process.env.ADMIN_USERNAME;
       const envPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-      
+
+      // Debug logging (remove after fixing)
+      console.log('🔍 Login attempt:', {
+        receivedUsername: username,
+        receivedPasswordLength: password?.length,
+        envUsername: envUsername,
+        envPasswordHashExists: !!envPasswordHash,
+        envPasswordHashPrefix: envPasswordHash?.substring(0, 10)
+      });
+
       if (!envUsername || !envPasswordHash) {
         return res.status(500).json({ error: "Server configuration error" });
       }
-      
+
       const usernameMatch = username === envUsername;
       const passwordMatch = await bcrypt.compare(password, envPasswordHash);
-      
+
+      console.log('🔍 Match results:', {
+        usernameMatch,
+        passwordMatch
+      });
+
       if (usernameMatch && passwordMatch) {
         const token = jwt.sign(
           { username, role: 'admin' },
           JWT_SECRET,
           { expiresIn: JWT_EXPIRY }
         );
-        
+
         return res.status(200).json({
           isAdmin: true,
           token,
