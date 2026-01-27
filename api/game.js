@@ -120,6 +120,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Invalid score submission" });
       }
 
+      // ENFORCE SESSION: Require sessionId for all submissions
+      if (!sessionId) {
+        return res.status(403).json({
+          error: "Session required. Please start a new game to play."
+        });
+      }
+
       // Rate limiting: Check recent submissions from this username
       const submissionRateCheck = await pool.query(
         `SELECT COUNT(*) as count FROM leaderboard
@@ -131,7 +138,7 @@ export default async function handler(req, res) {
         return res.status(429).json({ error: "Too many submissions. Please wait before submitting again." });
       }
 
-      // Anti-cheat: Validate session if provided
+      // Anti-cheat: Validate session (now guaranteed to exist)
       if (sessionId) {
         const clientIP = getClientIP(req);
 
