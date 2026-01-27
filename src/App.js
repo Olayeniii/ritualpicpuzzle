@@ -38,6 +38,9 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [playStarted, setPlayStarted] = useState(false); // start game timer on first move
 
+  // Anti-cheat: Game session tracking
+  const [gameSession, setGameSession] = useState(null); // { sessionId, puzzleSeed, serverStartTime }
+
   // Toast helpers
   const showToast = useCallback((message, type = 'info', durationMs = 3000) => {
     const id = Date.now() + Math.random();
@@ -274,26 +277,28 @@ const submitScore = useCallback(
       try {
         const ts = tournamentStatusRef.current;
         let tournamentId = null;
-        
+
         // Only include tournament data if we're in an active tournament
         if (tournamentMode && ts && ts.id && ts.status === 'active') {
           tournamentId = ts.id;
           logger.log("Submitting to tournament:", tournamentId, "Round:", currentRound);
         }
-        
+
         const submissionData = {
+          sessionId: gameSession?.sessionId, // Anti-cheat: Include session ID
           username: username.trim(),
           moves,
           time: timer,
           timeout,
+          finalState: tiles, // Anti-cheat: Include final puzzle state for validation
           round: tournamentMode ? currentRound : 1,
         };
-        
+
         // Add tournamentId if we have one
         if (tournamentId) {
           submissionData.tournamentId = tournamentId;
         }
-        
+
         logger.log("Submitting score:", submissionData);
 
         const response = await fetch("/api/game?action=submit", {
@@ -321,7 +326,7 @@ const submitScore = useCallback(
         console.error("Failed to submit score:", err);
       }
     },
-    [username, moves, timer, tournamentMode, currentRound, fetchLeaderboard, showToast]
+    [username, moves, timer, tiles, gameSession, tournamentMode, currentRound, fetchLeaderboard, showToast]
   );
 
   // auto game over if time > MAX_TIME
@@ -445,17 +450,41 @@ useEffect(() => {
   return () => window.removeEventListener('keydown', handleKeyDown);
 }, [adminAuth]);
 
-  const startGame = () => {
-    const initialTiles = Array.from(
-      { length: GRID_ROWS * GRID_COLS },
-      (_, i) => i
-    );
-    setTiles(shuffle(initialTiles));
-    setMoves(0);
-    setTimer(0);
-    setGameOver(false);
-    setGameStarted(true);
-    setPlayStarted(false);
+  const startGame = async () => {
+    try {
+      // Request game session from server (anti-cheat)
+      const response = await fetch("/api/game?action=start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          tournamentId: tournamentMode && tournamentStatus?.id ? tournamentStatus.id : null,
+          roundId: null // Will be determined server-side
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        showToast(error.error || "Failed to start game", "error");
+        return;
+      }
+
+      const session = await response.json();
+
+      // Use server-provided puzzle state
+      setGameSession(session);
+      setTiles(session.initialState);
+      setMoves(0);
+      setTimer(0);
+      setGameOver(false);
+      setGameStarted(true);
+      setPlayStarted(false);
+
+      logger.log("Game session started:", session.sessionId);
+    } catch (error) {
+      logger.error("Failed to start game:", error);
+      showToast("Failed to start game. Please try again.", "error");
+    }
   };
 
   const resetGame = () => {
