@@ -26,9 +26,15 @@ node_modules
 
 # Security-sensitive files
 generate-secrets.js
+verify-hash.js
+test-exact-password.js
 .env.local
 .env.*.local
+
 
 # Ignore all markdown files except README.md
 *.md
 !README.md
+game-api-fix.diff
+deploy-lambda.sh
+deploy-lambda.ps1

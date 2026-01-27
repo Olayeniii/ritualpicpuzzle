@@ -29,20 +29,12 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { action } = req.method === 'GET' ? req.query : (req.body || {});
+  // Admin API endpoint - handles authentication and admin operations
+
+  // Accept action from either body or query string (for flexibility)
+  const action = req.body?.action || req.query?.action;
 
   try {
-    // TEMPORARY DEBUG ENDPOINT - REMOVE AFTER FIXING
-    if (action === "debug-env" && req.method === "GET") {
-      return res.status(200).json({
-        hasUsername: !!process.env.ADMIN_USERNAME,
-        hasPasswordHash: !!process.env.ADMIN_PASSWORD_HASH,
-        hasJwtSecret: !!process.env.JWT_SECRET,
-        passwordHashPrefix: process.env.ADMIN_PASSWORD_HASH?.substring(0, 15),
-        usernameValue: process.env.ADMIN_USERNAME
-      });
-    }
-
     // PUBLIC: Login (no auth required)
     if (action === "login" && req.method === "POST") {
       const { username, password } = req.body;
@@ -50,27 +42,12 @@ export default async function handler(req, res) {
       const envUsername = process.env.ADMIN_USERNAME;
       const envPasswordHash = process.env.ADMIN_PASSWORD_HASH;
 
-      // Debug logging (remove after fixing)
-      console.log('🔍 Login attempt:', {
-        receivedUsername: username,
-        receivedPasswordLength: password?.length,
-        envUsername: envUsername,
-        envPasswordHashExists: !!envPasswordHash,
-        envPasswordHashPrefix: envPasswordHash?.substring(0, 10),
-        timestamp: new Date().toISOString()
-      });
-
       if (!envUsername || !envPasswordHash) {
         return res.status(500).json({ error: "Server configuration error" });
       }
 
       const usernameMatch = username === envUsername;
       const passwordMatch = await bcrypt.compare(password, envPasswordHash);
-
-      console.log('🔍 Match results:', {
-        usernameMatch,
-        passwordMatch
-      });
 
       if (usernameMatch && passwordMatch) {
         const token = jwt.sign(
@@ -93,12 +70,10 @@ export default async function handler(req, res) {
     // PROTECTED: All other actions require authentication
     const token = req.headers.authorization?.replace('Bearer ', '');
     const admin = await verifyAdminToken(token);
-    
+
     if (!admin) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-
-    const adminUsername = admin.username;
 
     // Dashboard stats
     if (action === "dashboard" && req.method === "GET") {

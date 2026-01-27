@@ -1,11 +1,17 @@
 // Consolidated game endpoints: /api/game?action=submit|leaderboard|tournament
 import { Pool } from "pg";
 
+// SSL configuration for AWS Lambda + RDS/Supabase
+// Always use SSL with rejectUnauthorized: false for self-signed certs
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: true }
-    : false,
+  ssl: {
+    rejectUnauthorized: false, // Required for AWS RDS self-signed certs
+  },
+  // Lambda-optimized connection pool
+  max: 1,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 export default async function handler(req, res) {
