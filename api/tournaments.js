@@ -1,8 +1,11 @@
 import { Pool } from "pg";
 
+// SSL configuration for Supabase/RDS - handles self-signed certificates
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : false,
+  ssl: {
+    rejectUnauthorized: false, // Required for Supabase/RDS self-signed certs
+  },
 });
 
 export default async function handler(req, res) {

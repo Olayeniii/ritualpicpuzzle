@@ -20,7 +20,8 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const action = req.method === 'GET' ? req.query.action : req.body?.action;
+  // Check query string first, then fall back to body
+  const action = req.query.action || req.body?.action;
 
   try {
     // Submit score

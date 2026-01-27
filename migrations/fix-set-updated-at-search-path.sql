@@ -52,17 +52,6 @@ CREATE TRIGGER set_updated_at_leaderboard
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
 
--- Admin users table (if exists)
-DROP TRIGGER IF EXISTS set_updated_at_admin_users ON public.admin_users;
-CREATE TRIGGER set_updated_at_admin_users
-  BEFORE UPDATE ON public.admin_users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at();
-
--- Audit log table (if exists)
-DROP TRIGGER IF EXISTS set_updated_at_audit_log ON public.audit_log;
-CREATE TRIGGER set_updated_at_audit_log
-  BEFORE UPDATE ON public.audit_log
-  FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at();
+-- Note: Only create triggers for tables that exist in your database
+-- If you add admin_users or audit_log tables later, add their triggers then
 

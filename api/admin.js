@@ -3,11 +3,12 @@ import { Pool } from "pg";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// SSL configuration for Supabase/RDS - handles self-signed certificates
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: true }
-    : false,
+  ssl: {
+    rejectUnauthorized: false, // Required for Supabase/RDS self-signed certs
+  },
 });
 
 const JWT_SECRET = process.env.JWT_SECRET;
