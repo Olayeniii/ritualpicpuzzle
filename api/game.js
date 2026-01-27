@@ -91,7 +91,16 @@ export default async function handler(req, res) {
       const sessionId = crypto.randomBytes(32).toString('hex');
       const puzzleSeed = Math.floor(Math.random() * 1000000);
       const initialTiles = Array.from({ length: GRID_ROWS * GRID_COLS }, (_, i) => i);
-      const shuffledTiles = seededShuffle(initialTiles, puzzleSeed);
+      let shuffledTiles = seededShuffle(initialTiles, puzzleSeed);
+
+      // Ensure puzzle is actually shuffled (not already solved)
+      // If by chance the shuffle resulted in a solved puzzle, shuffle again
+      let attempts = 0;
+      while (isSolved(shuffledTiles) && attempts < 10) {
+        const newSeed = Math.floor(Math.random() * 1000000);
+        shuffledTiles = seededShuffle(initialTiles, newSeed);
+        attempts++;
+      }
 
       const expiresAt = new Date(Date.now() + SESSION_EXPIRY_MINUTES * 60 * 1000);
 
@@ -186,6 +195,24 @@ export default async function handler(req, res) {
         // Validate solution if finalState provided
         if (finalState && !isSolved(finalState)) {
           return res.status(403).json({ error: "Invalid solution: puzzle not solved" });
+        }
+
+        // Anti-cheat: Validate minimum moves based on puzzle difficulty
+        // A solved puzzle requires at least some moves (unless it was already solved, which shouldn't happen)
+        const initialState = session.initial_state;
+        const isAlreadySolved = isSolved(initialState);
+
+        if (isAlreadySolved) {
+          return res.status(403).json({
+            error: "Invalid session: puzzle was already solved at start"
+          });
+        }
+
+        // Validate minimum moves (a shuffled puzzle requires at least 1 move to solve)
+        if (moves < 1) {
+          return res.status(403).json({
+            error: "Invalid submission: puzzle requires at least 1 move to solve"
+          });
         }
 
         // Mark session as used
