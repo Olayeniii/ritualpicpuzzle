@@ -56,7 +56,13 @@ function getClientIP(req) {
 }
 
 export default async function handler(req, res) {
-  // CORS is handled by vercel.json, but handle OPTIONS preflight
+  // Set CORS headers explicitly (backup to vercel.json)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Handle OPTIONS preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -77,13 +83,14 @@ export default async function handler(req, res) {
       const userAgent = req.headers['user-agent'] || 'unknown';
 
       // Rate limiting: Check sessions from this IP in the last hour
+      // Relaxed limit: 200 sessions per hour (was 50)
       const rateLimitCheck = await pool.query(
         `SELECT COUNT(*) as count FROM game_sessions
          WHERE ip_address = $1 AND created_at > NOW() - INTERVAL '1 hour'`,
         [clientIP]
       );
 
-      if (parseInt(rateLimitCheck.rows[0].count) >= 50) {
+      if (parseInt(rateLimitCheck.rows[0].count) >= 200) {
         return res.status(429).json({ error: "Too many game sessions. Please try again later." });
       }
 
@@ -147,6 +154,9 @@ export default async function handler(req, res) {
         return res.status(429).json({ error: "Too many submissions. Please wait before submitting again." });
       }
 
+      // Check if solution is valid (needed for leaderboard logic)
+      const isSolutionValid = finalState && isSolved(finalState);
+
       // Anti-cheat: Validate session (now guaranteed to exist)
       if (sessionId) {
         const clientIP = getClientIP(req);
@@ -188,30 +198,23 @@ export default async function handler(req, res) {
           });
         }
 
-        if (time > MAX_GAME_TIME) {
-          return res.status(403).json({ error: "Time exceeds maximum allowed" });
-        }
+        // Relaxed validation: Allow timeout and unsolved games
+        // They will be submitted but won't appear on leaderboard
 
-        // Validate solution if finalState provided
-        if (finalState && !isSolved(finalState)) {
-          return res.status(403).json({ error: "Invalid solution: puzzle not solved" });
-        }
-
-        // Anti-cheat: Validate minimum moves based on puzzle difficulty
-        // A solved puzzle requires at least some moves (unless it was already solved, which shouldn't happen)
         const initialState = session.initial_state;
         const isAlreadySolved = isSolved(initialState);
 
+        // Only validate for anti-cheat (not for gameplay restrictions)
         if (isAlreadySolved) {
           return res.status(403).json({
             error: "Invalid session: puzzle was already solved at start"
           });
         }
 
-        // Validate minimum moves (a shuffled puzzle requires at least 1 move to solve)
-        if (moves < 1) {
+        // Allow 0 moves for timeout cases, but validate if they claim to have solved it
+        if (isSolutionValid && moves < 1) {
           return res.status(403).json({
-            error: "Invalid submission: puzzle requires at least 1 move to solve"
+            error: "Invalid submission: solved puzzle requires at least 1 move"
           });
         }
 
@@ -229,58 +232,86 @@ export default async function handler(req, res) {
       const movesToStore = Number.isNaN(parsedMoves) ? 0 : parsedMoves;
       const timeToStore = Number.isNaN(parsedTime) ? 0 : parsedTime;
 
+      // Determine if this should appear on leaderboard
+      // Only show completed (solved) games that didn't timeout
+      // isSolutionValid already declared above (line 159)
+      const shouldShowOnLeaderboard = isSolutionValid && !timeout;
+
+      // Debug logging
+      console.log('Leaderboard check:', {
+        hasFinalState: !!finalState,
+        isSolutionValid,
+        timeout,
+        shouldShowOnLeaderboard,
+        finalState: finalState ? JSON.stringify(finalState) : 'none'
+      });
+
       let tournamentIdToStore = tournamentId === null || tournamentId === undefined ? null : parseInt(tournamentId, 10);
       if (Number.isNaN(tournamentIdToStore)) tournamentIdToStore = null;
       let roundIdToStore = roundId === null || roundId === undefined ? null : parseInt(roundId, 10);
       if (Number.isNaN(roundIdToStore)) roundIdToStore = null;
 
-      if (tournamentIdToStore) {
-        try {
-          const tCheck = await pool.query(
-            "SELECT id, current_round FROM tournaments WHERE id = $1",
-            [tournamentIdToStore]
-          );
-
-          if (tCheck.rows.length > 0) {
-            const currentRound = tCheck.rows[0].current_round || 1;
-            if (!roundIdToStore) {
-              const rCheck = await pool.query(
-                "SELECT id FROM rounds WHERE tournament_id = $1 AND round_number = $2",
-                [tournamentIdToStore, currentRound]
-              );
-              if (rCheck.rows.length > 0) {
-                roundIdToStore = rCheck.rows[0].id;
-              }
-            }
-
-            await pool.query(
-              `INSERT INTO leaderboard (username, moves, time, timeout, tournament_id, round_id, created_at) 
-               VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
-              [username, movesToStore, timeToStore, timeout, tournamentIdToStore, roundIdToStore]
+      // Only save to leaderboard if game was completed successfully
+      if (shouldShowOnLeaderboard) {
+        if (tournamentIdToStore) {
+          try {
+            const tCheck = await pool.query(
+              "SELECT id, current_round FROM tournaments WHERE id = $1",
+              [tournamentIdToStore]
             );
-          } else {
+
+            if (tCheck.rows.length > 0) {
+              const currentRound = tCheck.rows[0].current_round || 1;
+              if (!roundIdToStore) {
+                const rCheck = await pool.query(
+                  "SELECT id FROM rounds WHERE tournament_id = $1 AND round_number = $2",
+                  [tournamentIdToStore, currentRound]
+                );
+                if (rCheck.rows.length > 0) {
+                  roundIdToStore = rCheck.rows[0].id;
+                }
+              }
+
+              await pool.query(
+                `INSERT INTO leaderboard (username, moves, time, timeout, tournament_id, round_id, created_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+                [username, movesToStore, timeToStore, timeout, tournamentIdToStore, roundIdToStore]
+              );
+            } else {
+              await pool.query(
+                `INSERT INTO leaderboard (username, moves, time, timeout, created_at)
+                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+                [username, movesToStore, timeToStore, timeout]
+              );
+            }
+          } catch (e) {
             await pool.query(
-              `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
+              `INSERT INTO leaderboard (username, moves, time, timeout, created_at)
                VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
               [username, movesToStore, timeToStore, timeout]
             );
           }
-        } catch (e) {
+        } else {
           await pool.query(
-            `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
+            `INSERT INTO leaderboard (username, moves, time, timeout, created_at)
              VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
             [username, movesToStore, timeToStore, timeout]
           );
         }
-      } else {
-        await pool.query(
-          `INSERT INTO leaderboard (username, moves, time, timeout, created_at) 
-           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-          [username, movesToStore, timeToStore, timeout]
-        );
       }
 
-      return res.status(200).json({ message: "Score submitted successfully" });
+      // Return appropriate message based on whether it was saved to leaderboard
+      if (shouldShowOnLeaderboard) {
+        return res.status(200).json({
+          message: "Score submitted successfully",
+          leaderboard: true
+        });
+      } else {
+        return res.status(200).json({
+          message: "Game recorded (timeout or incomplete - not shown on leaderboard)",
+          leaderboard: false
+        });
+      }
     }
 
     // Get leaderboard

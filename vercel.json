@@ -9,11 +9,11 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://ritualpicpuzzle.vercel.app"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET,POST,OPTIONS"
+          "value": "GET,POST,OPTIONS,PUT,DELETE"
         },
         {
           "key": "Access-Control-Allow-Headers",
