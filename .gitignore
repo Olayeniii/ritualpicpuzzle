@@ -39,3 +39,4 @@ test-exact-password.js
 game-api-fix.diff
 deploy-lambda.sh
 deploy-lambda.ps1
+.vercel

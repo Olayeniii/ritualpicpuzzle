@@ -1,33 +1,26 @@
-// Consolidated game endpoints: /api/game?action=start|submit|leaderboard|tournament
 import { Pool } from "pg";
 import crypto from "crypto";
 
-// SSL configuration for AWS Lambda + RDS/Supabase
-// Always use SSL with rejectUnauthorized: false for self-signed certs
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // Required for AWS RDS self-signed certs
+    rejectUnauthorized: false,
   },
-  // Lambda-optimized connection pool
   max: 1,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
 
-// Puzzle configuration
 const GRID_ROWS = 3;
 const GRID_COLS = 4;
 const EMPTY_TILE = GRID_ROWS * GRID_COLS - 1;
-const SESSION_EXPIRY_MINUTES = 10;
-const MAX_GAME_TIME = 300; // 5 minutes
+const SESSION_EXPIRY_MINUTES = 30;
+const MAX_GAME_TIME = 300;
 
-// Fisher-Yates shuffle with seed for reproducibility
 function seededShuffle(array, seed) {
   const arr = [...array];
   let random = seed;
 
-  // Simple seeded random number generator
   const seededRandom = () => {
     random = (random * 9301 + 49297) % 233280;
     return random / 233280;
@@ -41,12 +34,10 @@ function seededShuffle(array, seed) {
   return arr;
 }
 
-// Validate that a puzzle state is solved
 function isSolved(tiles) {
   return tiles.every((tile, index) => tile === index);
 }
 
-// Get client IP address
 function getClientIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
          req.headers['x-real-ip'] ||
@@ -111,12 +102,19 @@ export default async function handler(req, res) {
 
       const expiresAt = new Date(Date.now() + SESSION_EXPIRY_MINUTES * 60 * 1000);
 
-      await pool.query(
-        `INSERT INTO game_sessions
-         (session_id, puzzle_seed, initial_state, started_at, expires_at, ip_address, user_agent, username, tournament_id, round_id)
-         VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9)`,
-        [sessionId, puzzleSeed, JSON.stringify(shuffledTiles), expiresAt, clientIP, userAgent, username.trim(), tournamentId, roundId]
-      );
+      try {
+        await pool.query(
+          `INSERT INTO game_sessions
+           (session_id, puzzle_seed, initial_state, started_at, expires_at, ip_address, user_agent, username, tournament_id, round_id)
+           VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9)`,
+          [sessionId, puzzleSeed, JSON.stringify(shuffledTiles), expiresAt, clientIP, userAgent, username.trim(), tournamentId, roundId]
+        );
+      } catch (insertError) {
+        console.error('❌ Session INSERT failed:', insertError.message);
+        console.error('Error code:', insertError.code);
+        console.error('Error detail:', insertError.detail);
+        throw insertError;
+      }
 
       return res.status(200).json({
         sessionId,
@@ -234,25 +232,14 @@ export default async function handler(req, res) {
 
       // Determine if this should appear on leaderboard
       // Only show completed (solved) games that didn't timeout
-      // isSolutionValid already declared above (line 159)
       const shouldShowOnLeaderboard = isSolutionValid && !timeout;
-
-      // Debug logging
-      console.log('Leaderboard check:', {
-        hasFinalState: !!finalState,
-        isSolutionValid,
-        timeout,
-        shouldShowOnLeaderboard,
-        finalState: finalState ? JSON.stringify(finalState) : 'none'
-      });
 
       let tournamentIdToStore = tournamentId === null || tournamentId === undefined ? null : parseInt(tournamentId, 10);
       if (Number.isNaN(tournamentIdToStore)) tournamentIdToStore = null;
       let roundIdToStore = roundId === null || roundId === undefined ? null : parseInt(roundId, 10);
       if (Number.isNaN(roundIdToStore)) roundIdToStore = null;
 
-      // Only save to leaderboard if game was completed successfully
-      if (shouldShowOnLeaderboard) {
+      try {
         if (tournamentIdToStore) {
           try {
             const tCheck = await pool.query(
@@ -298,20 +285,21 @@ export default async function handler(req, res) {
             [username, movesToStore, timeToStore, timeout]
           );
         }
+      } catch (leaderboardError) {
+        console.error('❌ Leaderboard INSERT failed:', leaderboardError.message);
+        console.error('Error code:', leaderboardError.code);
+        console.error('Error detail:', leaderboardError.detail);
+        throw leaderboardError;
       }
 
-      // Return appropriate message based on whether it was saved to leaderboard
-      if (shouldShowOnLeaderboard) {
-        return res.status(200).json({
-          message: "Score submitted successfully",
-          leaderboard: true
-        });
-      } else {
-        return res.status(200).json({
-          message: "Game recorded (timeout or incomplete - not shown on leaderboard)",
-          leaderboard: false
-        });
-      }
+      // Return appropriate message based on visibility
+      return res.status(200).json({
+        message: shouldShowOnLeaderboard
+          ? "Score submitted successfully"
+          : "Game recorded (timeout or incomplete - not shown on public leaderboard)",
+        saved: true,
+        leaderboard: shouldShowOnLeaderboard
+      });
     }
 
     // Get leaderboard
